@@ -161,20 +161,6 @@ function buildTaskGrid(){
     g.appendChild(row);host.appendChild(g);}
 }
 
-function renderPreview(t,pc){ /* tiny DotPad thumbnail: one sample frame of the task */
-  try{
-    const save=fb.slice();clearFB();
-    const spec=t.gen();
-    if(spec.maze)drawMaze(spec);
-    else{const d=spec.draw||(spec.phases&&spec.phases[0].draw);if(d)d();}
-    const g=pc.getContext('2d');g.clearRect(0,0,pc.width,pc.height);
-    g.fillStyle='rgba(255,255,255,0.07)';
-    for(let y=0;y<H;y+=2)for(let x=0;x<W;x+=2){g.beginPath();g.arc(2+x*2,2+y*2,0.5,0,7);g.fill();}
-    g.fillStyle='#e4f222';
-    for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(fb[y*W+x]){g.beginPath();g.arc(2+x*2,2+y*2,0.9,0,7);g.fill();}
-    fb.set(save);requestPaint();
-  }catch(e){}}
-
 /* ================= maze ================= */
 function genMaze(){
   const CO=7,RO=5;
