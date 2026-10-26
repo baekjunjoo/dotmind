@@ -63,24 +63,20 @@ function requestPaint(){if(!rafQ){rafQ=true;requestAnimationFrame(paint);}
 let lastSaid='',kokoro=null,kokoroBusy=false,kokoroAudio=null;
 async function loadKokoro(){
   if(kokoro||kokoroBusy)return;kokoroBusy=true;
-  const st=document.getElementById('voiceStatus'),btn=document.getElementById('btnVoice');
-  if(btn)btn.classList.add('busy');
+  const st=document.getElementById('voiceStatus');
   try{
-    if(st)st.textContent='Loading Kokoro-82M neural voice… (~80 MB, cached after first load)';
+    if(st)st.textContent='Preparing natural voice…';
     const m=await import('https://cdn.jsdelivr.net/npm/kokoro-js@1.2.0/+esm');
     let tts=null;
     try{tts=await m.KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'fp32',device:'webgpu'});}
     catch(e){tts=await m.KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'q8',device:'wasm'});}
     kokoro=tts;
-    if(st)st.textContent='Kokoro-82M ready — natural voice enabled.';
-    if(btn)btn.textContent='🎙 Kokoro voice on';
+    if(st)st.textContent='';
     DP.log('Kokoro-82M TTS ready (hexgrad/Kokoro-82M via kokoro-js).');
-    if(lastSaid)say(lastSaid);
   }catch(e){
-    if(st)st.textContent='Kokoro unavailable in this view — using the system voice instead.';
-    DP.log('Kokoro TTS unavailable: '+(e&&e.message||e));
+    if(st)st.textContent='';
+    DP.log('Kokoro TTS unavailable — using the system voice: '+(e&&e.message||e));
   }
-  if(btn)btn.classList.remove('busy');
   kokoroBusy=false;}
 async function say(t){lastSaid=t;
   if(kokoro){try{
@@ -93,7 +89,7 @@ async function say(t){lastSaid=t;
   }catch(e){}}
   try{if(!('speechSynthesis' in window))return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='en-US';u.rate=1.02;speechSynthesis.speak(u);}catch(e){}}
 document.getElementById('btnListen').addEventListener('click',()=>{if(lastSaid)say(lastSaid);});
-document.getElementById('btnVoice').addEventListener('click',loadKokoro);
+loadKokoro(); /* preload Kokoro in the background on page load */
 
 /* ================= DotPad BLE driver (protocol v3, row-wise live display) ================= */
 const DP={
