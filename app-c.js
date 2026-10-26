@@ -24,8 +24,11 @@ function nextTrial(){
   const spec=cur.task.gen();cur.spec=spec;
   setBraille(spec.brl||'');
   if(spec.maze){cur.t0=performance.now();drawMaze(spec);
-    $('qText').textContent=spec.q;say(spec.say||spec.q);
-    $('optRow').innerHTML='';$('dpad').style.display='grid';startTimer();return;}
+    $('qText').textContent=spec.q;$('timer').textContent='';
+    $('optRow').innerHTML='';$('dpad').style.display='grid';
+    const curAt=cur; /* response timer starts once the instructions have been read aloud */
+    say(spec.say||spec.q).then(()=>{if(cur===curAt&&cur.spec===spec)startTimer();});
+    return;}
   $('dpad').style.display='none';
   if(spec.phases){runPhases(spec,0);}else{clearFB();spec.draw();requestPaint();ask(spec);}}
 function runPhases(spec,k){
@@ -45,11 +48,14 @@ function ask(spec){
   const plain=spec.opts.every((o,i)=>o===String(i+1));
   if(plain)sp+=' Choose a position from one to four.';
   else sp+=' '+spec.opts.map((o,i)=>'Option '+(i+1)+': '+String(o).replace(/→/g,', then ').replace(/\s*·\s*/g,', ')+'.').join(' ');
-  say(sp);
   const row=$('optRow');row.innerHTML='';
   spec.opts.forEach((o,i)=>{const b=document.createElement('button');b.className='opt';
     b.innerHTML=`<b>${i+1}</b><span>${o}</span>`;b.addEventListener('click',()=>answer(i));row.appendChild(b);});
-  cur.awaiting=true;startTimer();}
+  cur.awaiting=true;
+  /* response timer starts only after the question and options have been read aloud */
+  cur.t0=performance.now();$('timer').textContent='';
+  const trialAt=cur.trial,curAt=cur;
+  say(sp).then(()=>{if(cur===curAt&&cur.awaiting&&cur.trial===trialAt)startTimer();});}
 function answer(i){
   if(!cur||!cur.awaiting)return;cur.awaiting=false;clearInterval(cur.tick);
   const spec=cur.spec,rt=(performance.now()-cur.t0)/1000,ok=i===spec.correct;
