@@ -47,54 +47,73 @@ function brlHex(){return brlCells.map(b=>b.toString(16).toUpperCase().padStart(2
 const cv=document.getElementById('sim'),ctx=cv.getContext('2d');
 cv.width=640;cv.height=438;
 let rafQ=false;
-function paint(){rafQ=false;const ox=22,oy=14,pitch=10;
+function paint(){rafQ=false;const ox=22,oy=14,pitch=10,TAU=6.2832;
   ctx.clearRect(0,0,cv.width,cv.height);
-  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const on=fb[y*W+x];const px=ox+x*pitch,py=oy+y*pitch+(0);
-    ctx.beginPath();ctx.arc(px,py,on?3.6:2.1,0,7);
-    if(on){ctx.fillStyle='#e4f222';ctx.shadowColor='rgba(228,242,34,.8)';ctx.shadowBlur=7;}
-    else{ctx.fillStyle='rgba(255,255,255,0.11)';ctx.shadowBlur=0;}
-    ctx.fill();ctx.shadowBlur=0;}
+  /* batched: 2 fills instead of 2,400 — one path for off pins, one glowing path for raised pins */
+  ctx.shadowBlur=0;ctx.fillStyle='rgba(255,255,255,0.11)';ctx.beginPath();
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(!fb[y*W+x]){const px=ox+x*pitch,py=oy+y*pitch;ctx.moveTo(px+2.1,py);ctx.arc(px,py,2.1,0,TAU);}
+  ctx.fill();
+  ctx.fillStyle='#e4f222';ctx.shadowColor='rgba(228,242,34,.8)';ctx.shadowBlur=7;ctx.beginPath();
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(fb[y*W+x]){const px=ox+x*pitch,py=oy+y*pitch;ctx.moveTo(px+3.6,py);ctx.arc(px,py,3.6,0,TAU);}
+  ctx.fill();ctx.shadowBlur=0;
 }
 let bleFlushT=null;
 function requestPaint(){if(!rafQ){rafQ=true;requestAnimationFrame(paint);}
   if(DP.connected&&bleFlushT==null){bleFlushT=setTimeout(()=>{bleFlushT=null;if(DP.connected)DP.push();},0);}}
 
-/* ================= speech — Kokoro-82M neural TTS with system-voice fallback ================= */
-let lastSaid='',kokoro=null,kokoroBusy=false,kokoroAudio=null;
-async function loadKokoro(){
-  if(kokoro||kokoroBusy)return;kokoroBusy=true;
+/* ================= speech — Kokoro-82M neural TTS in a Web Worker (keeps the UI responsive) ================= */
+let lastSaid='',kokoroReady=false,kokoroAudio=null,sayTok=0,ttsWorker=null,ttsSeq=0;
+const ttsPending=new Map(),ttsCache=new Map(); /* sentence → wav Blob — repeated prompts replay instantly */
+const TTS_WORKER_SRC=`
+import {KokoroTTS} from 'https://cdn.jsdelivr.net/npm/kokoro-js@1.2.0/+esm';
+const loading=(async()=>{let tts;
+  try{tts=await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'fp32',device:'webgpu'});}
+  catch(e){tts=await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'q8',device:'wasm'});}
+  postMessage({ready:true});return tts;})();
+loading.catch(e=>postMessage({fatal:''+e}));
+onmessage=async e=>{const {id,text}=e.data;
+  try{const tts=await loading;const audio=await tts.generate(text,{voice:'af_heart'});
+    const wav=audio.toWav();postMessage({id,wav},[wav]);}
+  catch(err){postMessage({id,error:''+err});}};`;
+function loadKokoro(){
   const st=document.getElementById('voiceStatus');
+  if(st)st.textContent='Preparing natural voice…';
   try{
-    if(st)st.textContent='Preparing natural voice…';
-    const m=await import('https://cdn.jsdelivr.net/npm/kokoro-js@1.2.0/+esm');
-    let tts=null;
-    try{tts=await m.KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'fp32',device:'webgpu'});}
-    catch(e){tts=await m.KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'q8',device:'wasm'});}
-    kokoro=tts;
-    if(st)st.textContent='';
-    DP.log('Kokoro-82M TTS ready (hexgrad/Kokoro-82M via kokoro-js).');
-  }catch(e){
-    if(st)st.textContent='';
-    DP.log('Kokoro TTS unavailable — using the system voice: '+(e&&e.message||e));
-  }
-  kokoroBusy=false;}
-let sayTok=0;
+    ttsWorker=new Worker(URL.createObjectURL(new Blob([TTS_WORKER_SRC],{type:'text/javascript'})),{type:'module'});
+    ttsWorker.onmessage=e=>{const d=e.data;
+      if(d.ready){kokoroReady=true;if(st)st.textContent='';DP.log('Kokoro-82M TTS ready (worker · hexgrad/Kokoro-82M via kokoro-js).');return;}
+      if(d.fatal){if(st)st.textContent='';DP.log('Kokoro TTS unavailable — using the system voice: '+d.fatal);
+        try{ttsWorker.terminate();}catch(e2){}ttsWorker=null;kokoroReady=false;
+        ttsPending.forEach(p=>p.reject(new Error(d.fatal)));ttsPending.clear();return;}
+      const p=ttsPending.get(d.id);if(!p)return;ttsPending.delete(d.id);
+      if(d.error)p.reject(new Error(d.error));else p.resolve(new Blob([d.wav],{type:'audio/wav'}));};
+    ttsWorker.onerror=()=>{if(st)st.textContent='';DP.log('Kokoro worker failed — using the system voice.');
+      try{ttsWorker.terminate();}catch(e2){}ttsWorker=null;kokoroReady=false;
+      ttsPending.forEach(p=>p.reject(new Error('worker error')));ttsPending.clear();};
+  }catch(e){if(st)st.textContent='';ttsWorker=null;DP.log('Kokoro TTS unavailable — using the system voice: '+(e&&e.message||e));}}
+function ttsGen(text){
+  const hit=ttsCache.get(text);if(hit)return Promise.resolve(hit);
+  if(!ttsWorker||!kokoroReady)return Promise.reject(new Error('tts not ready'));
+  const id=++ttsSeq;
+  return new Promise((resolve,reject)=>{
+    ttsPending.set(id,{resolve:b=>{if(ttsCache.size>60)ttsCache.delete(ttsCache.keys().next().value);
+      ttsCache.set(text,b);resolve(b);},reject});
+    ttsWorker.postMessage({id,text});});}
+function stopAudio(){if(kokoroAudio){try{kokoroAudio.pause();}catch(e){}if(kokoroAudio._done)kokoroAudio._done();kokoroAudio=null;}}
 async function say(t){lastSaid=t;const tok=++sayTok;
-  if(kokoro){try{
-    if(kokoroAudio){try{kokoroAudio.pause();}catch(e){}kokoroAudio=null;}
-    /* split into sentences: first one plays immediately, the next is synthesised while the current plays */
+  if(ttsWorker&&kokoroReady){try{
+    stopAudio();
+    /* sentence-chunked: the first sentence plays at once, the next is synthesised while the current plays */
     const parts=(t.match(/[^.?!]+[.?!]?/g)||[t]).map(p=>p.trim()).filter(Boolean);
-    const gen=txt=>kokoro.generate(txt,{voice:'af_heart'});
-    let next=gen(parts[0]);
+    let next=ttsGen(parts[0]);
     for(let i=0;i<parts.length;i++){
-      const audio=await next;if(tok!==sayTok)return;
-      if(i+1<parts.length)next=gen(parts[i+1]);
-      const blob=audio.toBlob?audio.toBlob():new Blob([audio.toWav()],{type:'audio/wav'});
-      kokoroAudio=new Audio(URL.createObjectURL(blob));
-      await new Promise(res=>{kokoroAudio.onended=res;kokoroAudio.onerror=res;
-        kokoroAudio.play().catch(err=>{DP.log('Audio autoplay blocked ('+err.name+') — tap or click anywhere to enable sound.');
-          const once=()=>{if(kokoroAudio&&tok===sayTok)kokoroAudio.play().catch(()=>{});};
-          document.addEventListener('pointerdown',once,{once:true});});});
+      const blob=await next;if(tok!==sayTok)return;
+      if(i+1<parts.length)next=ttsGen(parts[i+1]);
+      const url=URL.createObjectURL(blob),a=new Audio(url);kokoroAudio=a;
+      await new Promise(res=>{let fin=false;const done=()=>{if(fin)return;fin=true;URL.revokeObjectURL(url);res();};
+        a._done=done;a.onended=done;a.onerror=done;
+        a.play().catch(err=>{DP.log('Audio autoplay blocked ('+err.name+') — tap or click anywhere to enable sound.');
+          document.addEventListener('pointerdown',()=>{if(kokoroAudio===a&&tok===sayTok)a.play().catch(()=>{});},{once:true});});});
       if(tok!==sayTok)return;}
     return;
   }catch(e){}}
