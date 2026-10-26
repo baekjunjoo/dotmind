@@ -195,8 +195,8 @@ function genMaze(){
     const steps=[[r-1,c,()=>!wallsH[r][c]],[r+1,c,()=>!wallsH[r+1][c]],[r,c-1,()=>!wallsV[r][c]],[r,c+1,()=>!wallsV[r][c+1]]];
     for(const [rr,cc,open] of steps)if(rr>=0&&rr<RO&&cc>=0&&cc<CO&&dist[rr][cc]<0&&open()){dist[rr][cc]=dist[r][c]+1;qq.push([rr,cc]);}}
   return {maze:true,wallsH,wallsV,RO,CO,player:[0,0],goal:[RO-1,CO-1],moves:0,optimal:dist[RO-1][CO-1],
-    q:'A maze. You start top-left; the exit (diamond) is bottom-right. Raised lines are walls — steer with the arrows, the arrow keys, or the DotPad panning / F1 / F2 keys.',brl:'maze',
-    say:'Find your way from the top left to the diamond at the bottom right. Raised lines are walls.'};
+    q:'A maze. You start top-left; the exit (diamond) is bottom-right. Raised lines are walls — DotPad keys: F1 left, F2 up, F3 down, F4 right (arrow keys also work).',brl:'maze',
+    say:'Find your way from the top left to the diamond at the bottom right. On the DotPad: F1 moves left, F2 up, F3 down, and F4 right.'};
 }
 function drawMaze(s){clearFB();const ox=2,oy=0,cs=8;
   for(let r=0;r<=s.RO;r++)for(let c=0;c<s.CO;c++)if(s.wallsH[r][c])HL(ox+c*cs,ox+c*cs+cs,oy+r*cs);
