@@ -1,7 +1,8 @@
 /* ================= trial engine ================= */
 const $=id=>document.getElementById(id);
-let cur=null;
-function cleanup(){if(cur){cur.timers?.forEach(t=>clearTimeout(t));if(cur.tick)clearInterval(cur.tick);if(cur.cd)clearInterval(cur.cd);}
+let cur=null,autoNextT=null;
+function cleanup(){if(autoNextT){clearTimeout(autoNextT);autoNextT=null;}
+  if(cur){cur.timers?.forEach(t=>clearTimeout(t));if(cur.tick)clearInterval(cur.tick);if(cur.cd)clearInterval(cur.cd);}
   $('dpad').style.display='none';$('optRow').innerHTML='';$('feed').textContent='';$('feed').className='feed';$('timer').textContent='';$('resultBox').hidden=true;}
 function startTask(t){cleanup();idleStop();
   cur={task:t,trial:0,n:t.maze?1:3,res:[],timers:[]};
@@ -39,7 +40,12 @@ function runPhases(spec,k){
 function startTimer(){cur.t0=performance.now();
   cur.tick=setInterval(()=>{$('timer').textContent=((performance.now()-cur.t0)/1000).toFixed(1)+'s';},100);}
 function ask(spec){
-  $('qText').textContent=spec.q;say(spec.say||spec.q);
+  $('qText').textContent=spec.q;
+  let sp=spec.say||spec.q;
+  const plain=spec.opts.every((o,i)=>o===String(i+1));
+  if(plain)sp+=' Choose a position from one to four.';
+  else sp+=' '+spec.opts.map((o,i)=>'Option '+(i+1)+': '+String(o).replace(/→/g,', then ')+'.').join(' ');
+  say(sp);
   const row=$('optRow');row.innerHTML='';
   spec.opts.forEach((o,i)=>{const b=document.createElement('button');b.className='opt';
     b.innerHTML=`<b>${i+1}</b><span>${o}</span>`;b.addEventListener('click',()=>answer(i));row.appendChild(b);});
@@ -77,9 +83,11 @@ function finishTask(){
   li.innerHTML=`<span class="ok">★ ${score}</span><span>${t.name}</span><span class="t">${detail}</span>`;
   log.prepend(li);
   const card=$('tc-'+t.id);if(card)card.querySelector('.done').hidden=false;
-  $('qText').textContent='Task complete. Pick another task — each domain probes a different part of the recovery ladder.';
-  say(`Task complete. Your score: ${score}.`);
-  $('btnQuit').hidden=true;cur=null;idleStart();}
+  const idx=TASKS.indexOf(t),nxt=TASKS[(idx+1)%TASKS.length];
+  $('qText').textContent=`Task complete — ★ ${score}. Next up: ${nxt.name} (starts automatically; “End task” stops the session).`;
+  say(`Task complete. Your score: ${score}. Next task: ${nxt.name}.`);
+  cur=null;
+  autoNextT=setTimeout(()=>{autoNextT=null;startTask(nxt);},6000);}
 $('btnQuit').addEventListener('click',()=>{cleanup();cur=null;
   $('trainerTitle').textContent='Pick a task to begin';$('trainerDom').innerHTML='';
   $('qText').textContent='Select any task card above. Each task runs three short trials; accuracy and response time are recorded and plotted on the recovery dashboard.';
@@ -90,7 +98,7 @@ document.addEventListener('keydown',e=>{
     if(m){e.preventDefault();mazeMove(cur.spec,m);return;}}
   if(cur&&cur.awaiting&&/^[1-5]$/.test(e.key)){const i=+e.key-1;if(i<cur.spec.opts.length)answer(i);}});
 function onDeviceKey(k){
-  if(cur&&cur.spec&&cur.spec.maze){const m={PanL:'left',PanR:'right',F1:'up',F2:'down'}[k];if(m)mazeMove(cur.spec,m);return;}
+  if(cur&&cur.spec&&cur.spec.maze){const m={F1:'left',F2:'up',F3:'down',F4:'right',PanL:'left',PanR:'right'}[k];if(m)mazeMove(cur.spec,m);return;}
   if(cur&&cur.awaiting){const i={F1:0,F2:1,F3:2,F4:3}[k];if(i!=null&&i<cur.spec.opts.length)answer(i);}}
 
 /* ================= idle animation (breathing sun) ================= */
