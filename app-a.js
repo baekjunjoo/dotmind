@@ -78,20 +78,28 @@ async function loadKokoro(){
     DP.log('Kokoro TTS unavailable — using the system voice: '+(e&&e.message||e));
   }
   kokoroBusy=false;}
-async function say(t){lastSaid=t;
+let sayTok=0;
+async function say(t){lastSaid=t;const tok=++sayTok;
   if(kokoro){try{
     if(kokoroAudio){try{kokoroAudio.pause();}catch(e){}kokoroAudio=null;}
-    const audio=await kokoro.generate(t,{voice:'af_heart'});
-    if(lastSaid!==t)return;
-    const blob=audio.toBlob?audio.toBlob():new Blob([audio.toWav()],{type:'audio/wav'});
-    kokoroAudio=new Audio(URL.createObjectURL(blob));
-    kokoroAudio.play().catch(err=>{DP.log('Audio autoplay blocked ('+err.name+') — tap or click anywhere to enable sound.');
-      const once=()=>{if(kokoroAudio)kokoroAudio.play().catch(()=>{});};
-      document.addEventListener('pointerdown',once,{once:true});});
+    /* split into sentences: first one plays immediately, the next is synthesised while the current plays */
+    const parts=(t.match(/[^.?!]+[.?!]?/g)||[t]).map(p=>p.trim()).filter(Boolean);
+    const gen=txt=>kokoro.generate(txt,{voice:'af_heart'});
+    let next=gen(parts[0]);
+    for(let i=0;i<parts.length;i++){
+      const audio=await next;if(tok!==sayTok)return;
+      if(i+1<parts.length)next=gen(parts[i+1]);
+      const blob=audio.toBlob?audio.toBlob():new Blob([audio.toWav()],{type:'audio/wav'});
+      kokoroAudio=new Audio(URL.createObjectURL(blob));
+      await new Promise(res=>{kokoroAudio.onended=res;kokoroAudio.onerror=res;
+        kokoroAudio.play().catch(err=>{DP.log('Audio autoplay blocked ('+err.name+') — tap or click anywhere to enable sound.');
+          const once=()=>{if(kokoroAudio&&tok===sayTok)kokoroAudio.play().catch(()=>{});};
+          document.addEventListener('pointerdown',once,{once:true});});});
+      if(tok!==sayTok)return;}
     return;
   }catch(e){}}
   try{if(!('speechSynthesis' in window))return;speechSynthesis.cancel();
-    setTimeout(()=>{if(lastSaid!==t)return;const u=new SpeechSynthesisUtterance(t);u.lang='en-US';u.rate=1.02;speechSynthesis.speak(u);},80);}catch(e){}}
+    setTimeout(()=>{if(tok!==sayTok)return;const u=new SpeechSynthesisUtterance(t);u.lang='en-US';u.rate=1.02;speechSynthesis.speak(u);},80);}catch(e){}}
 document.getElementById('btnListen').addEventListener('click',()=>{if(lastSaid)say(lastSaid);});
 loadKokoro(); /* preload Kokoro in the background on page load */
 
