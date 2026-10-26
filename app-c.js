@@ -5,9 +5,9 @@ function cleanup(){if(autoNextT){clearTimeout(autoNextT);autoNextT=null;}
   if(cur){cur.timers?.forEach(t=>clearTimeout(t));if(cur.tick)clearInterval(cur.tick);if(cur.cd)clearInterval(cur.cd);}
   $('dpad').style.display='none';$('optRow').innerHTML='';$('feed').textContent='';$('feed').className='feed';$('timer').textContent='';$('resultBox').hidden=true;}
 function startTask(t){cleanup();idleStop();
-  cur={task:t,trial:0,n:t.maze?1:3,res:[],timers:[]};
+  cur={task:t,trial:0,n:t.maze?2:6,res:[],timers:[]};
   $('trainerTitle').textContent=t.name;
-  $('trainerDom').innerHTML=`${DOMS[t.dom].label} · ${t.maze?'1 run':'3 trials'}<br><span class="simtag">live measurement</span>`;
+  $('trainerDom').innerHTML=`${DOMS[t.dom].label} · ${t.maze?'2 runs':'6 trials'}<br><span class="simtag">live measurement</span>`;
   $('btnQuit').hidden=false;
   document.getElementById('trainer').scrollIntoView({behavior:'smooth',block:'start'});
   nextTrial();}
@@ -65,13 +65,13 @@ function mazeDone(s){clearInterval(cur.tick);
   $('dpad').style.display='none';tdotsRender();
   const f=$('feed');f.textContent=`Escaped! ${s.moves} moves (optimal ${s.optimal}) · ${rt.toFixed(1)}s`;f.className='feed ok';
   say('You escaped the maze. Well done.');
-  cur.timers.push(setTimeout(finishTask,1200));}
+  cur.timers.push(setTimeout(nextTrial,1200));}
 function finishTask(){
   const t=cur.task,res=cur.res;
   let score,detail;
   const med=a=>{const s=a.slice().sort((x,y)=>x-y);return s[Math.floor(s.length/2)];};
-  if(t.maze&&res.length){const r=res[0];score=Math.round(r.eff*100);
-    detail=`${r.moves} moves · optimal ${r.optimal} · ${r.rt.toFixed(1)}s`;}
+  if(t.maze&&res.length){const eff=res.reduce((a,r)=>a+r.eff,0)/res.length;score=Math.round(eff*100);
+    detail=res.map(r=>`${r.moves} moves (opt ${r.optimal})`).join(' · ')+` · ${res.reduce((a,r)=>a+r.rt,0).toFixed(1)}s total`;}
   else{const hits=res.filter(r=>r.ok).length;score=Math.round(hits/res.length*100);
     detail=`${hits}/${res.length} correct · median ${med(res.map(r=>r.rt)).toFixed(1)}s`;}
   $('resultBox').hidden=false;
@@ -90,7 +90,7 @@ function finishTask(){
   autoNextT=setTimeout(()=>{autoNextT=null;startTask(nxt);},6000);}
 $('btnQuit').addEventListener('click',()=>{cleanup();cur=null;
   $('trainerTitle').textContent='Pick a task to begin';$('trainerDom').innerHTML='';
-  $('qText').textContent='Select any task card above. Each task runs three short trials; accuracy and response time are recorded and plotted on the recovery dashboard.';
+  $('qText').textContent='Select any task card above. Each task runs six short trials; accuracy and response time are recorded and plotted on the recovery dashboard.';
   $('btnQuit').hidden=true;idleStart();});
 document.querySelectorAll('#dpad button[data-mv]').forEach(b=>b.addEventListener('click',()=>{if(cur&&cur.spec&&cur.spec.maze)mazeMove(cur.spec,b.dataset.mv);}));
 document.addEventListener('keydown',e=>{
