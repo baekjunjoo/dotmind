@@ -44,7 +44,7 @@ function ask(spec){
   let sp=spec.say||spec.q;
   const plain=spec.opts.every((o,i)=>o===String(i+1));
   if(plain)sp+=' Choose a position from one to four.';
-  else sp+=' '+spec.opts.map((o,i)=>'Option '+(i+1)+': '+String(o).replace(/→/g,', then ')+'.').join(' ');
+  else sp+=' '+spec.opts.map((o,i)=>'Option '+(i+1)+': '+String(o).replace(/→/g,', then ').replace(/\s*·\s*/g,', ')+'.').join(' ');
   say(sp);
   const row=$('optRow');row.innerHTML='';
   spec.opts.forEach((o,i)=>{const b=document.createElement('button');b.className='opt';
@@ -123,16 +123,18 @@ setInterval(()=>{document.querySelectorAll('[data-tick]').forEach(el=>{
   const cnv=document.getElementById('bgdots');if(!cnv)return;
   const g=cnv.getContext('2d');
   const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let W=0,H=0,dpr=1,pts=[],dark=false,greyRGB='40,36,30',exRGB='106,128,6';
+  let W=0,H=0,dpr=1,pts=[],dark=false,greyRGB='40,36,30',exRGB='106,128,6',greyCache=[],exCache=[];
   function colors(){
     const ink=(getComputedStyle(document.documentElement).getPropertyValue('--ink')||'#0c0a08').trim();
     dark=/^#[ef]/i.test(ink); /* light ink => dark theme */
     greyRGB=dark?'226,222,210':'40,36,30';
     exRGB=dark?'228,242,34':'106,128,6';
+    greyCache=[];exCache=[]; /* pre-built fill styles — no per-particle string allocation each frame */
+    for(let i=0;i<=24;i++){const a=(i/24).toFixed(3);greyCache.push('rgba('+greyRGB+','+a+')');exCache.push('rgba('+exRGB+','+a+')');}
   }
   function build(){
     pts=[];
-    const n=Math.round(Math.min(5200,Math.max(1600,(W*H)/240)));
+    const n=Math.round(Math.min(2600,Math.max(1200,(W*H)/420)));
     for(let i=0;i<n;i++)pts.push({
       x:Math.random()*W, y:Math.random()*H,
       s1:Math.random()*Math.PI*2, s2:.4+Math.random()*1.1,   /* per-dot drift phase/speed */
@@ -141,7 +143,7 @@ setInterval(()=>{document.querySelectorAll('[data-tick]').forEach(el=>{
       exc:0});
   }
   function drawStatic(){g.clearRect(0,0,W,H);
-    for(const p of pts){g.fillStyle='rgba('+greyRGB+','+(p.fl*.3)+')';g.fillRect(p.x,p.y,p.sz,p.sz);}}
+    for(const p of pts){g.fillStyle=greyCache[Math.min(24,(p.fl*.3*24)|0)];g.fillRect(p.x,p.y,p.sz,p.sz);}}
   function resize(){dpr=Math.min(1.75,devicePixelRatio||1);W=innerWidth;H=innerHeight;
     cnv.width=W*dpr;cnv.height=H*dpr;g.setTransform(dpr,0,0,dpr,0,0);colors();build();
     if(reduced)drawStatic();}
@@ -166,8 +168,8 @@ setInterval(()=>{document.querySelectorAll('[data-tick]').forEach(el=>{
       let x=p.x+wx,y=p.y+wy;const s=p.sz+e*1.3;
       if(e>.02){const dx=x-mx.x,dy=y-mx.y,d=Math.max(14,Math.hypot(dx,dy));
         x+=dx/d*5*e;y+=dy/d*5*e;
-        g.fillStyle='rgba('+exRGB+','+Math.min(base+e*.9,1)+')';}
-      else g.fillStyle='rgba('+greyRGB+','+base+')';
+        g.fillStyle=exCache[Math.min(24,(Math.min(base+e*.9,1)*24)|0)];}
+      else g.fillStyle=greyCache[Math.min(24,(base*24)|0)];
       g.fillRect(x-s/2,y-s/2,s,s);}
     requestAnimationFrame(frame);
   }
