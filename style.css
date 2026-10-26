@@ -55,7 +55,7 @@ button{font-family:var(--font); cursor:pointer;}
 /* header */
 header.top{position:sticky; top:env(safe-area-inset-top,0px); z-index:40; background:color-mix(in srgb,var(--bg) 88%, transparent); backdrop-filter:blur(10px); border-bottom:1px solid var(--line);}
 body::before{content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:50; background:var(--bg);}
-.topin{display:flex; align-items:center; gap:12px; padding-block:13px;}
+.topin{display:flex; align-items:center; justify-content:flex-end; gap:12px; padding-block:13px;}
 .logo{display:flex; align-items:center; gap:11px; margin-right:auto;}
 .logomark{width:34px;height:34px;border-radius:10px;background:var(--dark); position:relative; flex:none;}
 .logomark::after{content:""; position:absolute; inset:0;
