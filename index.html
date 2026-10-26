@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important} img{max-width:100%}</style>
+<title>Dot Mind Trainer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+
+<canvas id="bgdots" aria-hidden="true"></canvas>
+
+<header class="top"><div class="wrap topin">
+  <div class="logo"><div class="logomark"></div><div><span class="eyebrow">Tactile Cognition</span><strong>Dot Mind</strong></div></div>
+  <span class="pill" id="statusPill"><span class="dot"></span><span id="statusTxt">No DotPad yet</span></span>
+  <button class="btn btn-blue" id="btnConnect">⌁ Connect DotPad</button>
+</div></header>
+
+<div class="hero"><div class="wrap heroin">
+  <div class="eyebrow"><span>Tactile cognition, measured by</span> <span class="chip">60 × 40 · 2,400 dots</span></div>
+  <h1>Touch is memory.<br>Train <em>both</em>.</h1>
+  <p class="lead">Dot Mind is a tactile cognitive training program for older adults with acquired vision loss. Every exercise runs on the DotPad, every trial is measured — and recovery becomes a curve you can watch rise.</p>
+  <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:22px">
+    <a class="btn btn-lime" href="#tasks" style="text-decoration:none"><span class="ic">⠿</span> Start a training task</a>
+    <a class="btn btn-ghost" href="#curriculum" style="text-decoration:none">See the 8-session program</a>
+  </div>
+  <div class="steps"><span><b>1</b>Choose a task</span><span class="sep">›</span><span><b>2</b>Train on the DotPad</span><span class="sep">›</span><span><b>3</b>Watch the recovery curve rise</span></div>
+  <div><span class="concept">Concept demo · Simulated data · Clinical validation required</span></div>
+</div></div>
+
+<div class="ticker"><div class="wrap tickin">
+  <span class="tlab"><i>⠿</i> Demo clinic today:</span>
+  <span>Pins raised <b class="num" data-tick="142880">142,880</b></span>
+  <span>Trials completed <b class="num" data-tick="1248">1,248</b></span>
+  <span>Sessions this week <b class="num" data-tick="96">96</b></span>
+  <span>Median response <b class="num">6.8s</b></span>
+  <span>Simulated figures</span>
+</div></div>
+
+<main class="wrap">
+
+<section id="dashboard">
+  <div class="sechead"><span class="eyebrow">01 · Recovery dashboard</span><h2>Eight weeks, one rising line</h2>
+    <div class="right">Illustrative patient journey<br><span class="simtag">Simulated data for demonstration</span></div></div>
+  <div class="grid gdash">
+    <div class="card">
+      <div class="persona"><div class="avatar">KY</div>
+        <div><b>K. Y. · 68</b> — acquired vision loss (nAMD, 2 yrs)<div class="meta">Dot Mind program · 2 sessions / week · weeks 1–8 shown</div></div>
+        <span class="simtag" style="margin-left:auto">Simulated</span></div>
+      <svg id="curve" viewBox="0 0 560 300" style="width:100%;height:auto;margin-top:10px" role="img" aria-label="Composite tactile-cognition score rising from 32 to 78 over eight weeks"></svg>
+      <div class="tiles">
+        <div class="tile"><div class="lab">Accuracy</div><div class="val num">41% → 83%</div><div class="delta">▲ 42 pts</div></div>
+        <div class="tile"><div class="lab">Median response</div><div class="val num">14.2s → 6.8s</div><div class="delta">▲ 52% faster</div></div>
+        <div class="tile"><div class="lab">Exploration efficiency</div><div class="val num">.31 → .74</div><div class="delta">▲ 2.4×</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <b style="font-size:15px">Five cognitive domains</b>
+      <div style="font-size:12.5px;color:var(--mut);margin:4px 0 6px">Week 1 (faint) vs week 8 (solid) — simulated</div>
+      <div id="domBars"></div>
+      <div style="border-top:1px solid var(--line); margin-top:16px; padding-top:12px">
+        <b style="font-size:14px">Live demo results</b>
+        <ul id="liveLog"><li class="empty">Complete a task below — your score lands on this chart as ★ Today.</li></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="tasks">
+  <div class="sechead"><span class="eyebrow">02 · Choose a training task</span><h2>15 tasks across 5 cognitive domains</h2>
+    <div class="right">All tasks run on the 60 × 40 tactile display<br>with voice guidance &amp; braille labels</div></div>
+  <div id="taskGrid"></div>
+</section>
+
+<section id="trainer">
+  <div class="sechead"><span class="eyebrow">03 · Train on the pad</span><h2 id="trainerTitle">Pick a task to begin</h2>
+    <div class="right" id="trainerDom"></div></div>
+  <div class="trainer">
+    <div class="padwrap"><div class="corner"></div>
+      <div class="padmeta"><span><b>Dot Pad</b> · tactile graphic display</span><span><b class="num">60 × 40</b> · 2,400 dots</span></div>
+      <canvas id="sim" width="640" height="500"></canvas>
+      <div class="brl" id="brlLine" aria-label="braille text line"></div>
+    </div>
+    <div class="qcard card">
+      <div class="trialrow"><span id="trialLab">Trial — of —</span><span class="tdots" id="tdots"></span><span style="margin-left:auto" class="num" id="timer"></span></div>
+      <div class="qtext" id="qText">Select any task card above. Each task runs three short trials; accuracy and response time are recorded and plotted on the recovery dashboard.</div>
+      <div class="opts" id="optRow"></div>
+      <div id="dpad">
+        <button class="blank"></button><button data-mv="up" aria-label="up">↑</button><button class="blank"></button>
+        <button data-mv="left" aria-label="left">←</button><button data-mv="down" aria-label="down">↓</button><button data-mv="right" aria-label="right">→</button>
+      </div>
+      <div class="feed" id="feed"></div>
+      <div id="voiceStatus" style="font-size:12px;color:var(--mut);min-height:1.2em"></div>
+      <div style="display:flex; gap:9px; flex-wrap:wrap">
+        <button class="btn btn-ghost" id="btnListen">🔊 Listen</button>
+        <button class="btn btn-ghost" id="btnVoice"><span class="ic">🎙</span> Natural voice</button>
+        <button class="btn btn-ghost" id="btnQuit" hidden>End task</button>
+      </div>
+      <div id="resultBox" hidden></div>
+    </div>
+  </div>
+</section>
+
+<section id="curriculum">
+  <div class="sechead"><span class="eyebrow">04 · Standard program</span><h2>The recovery ladder — 8 sessions, 4 stages</h2>
+    <div class="right">50 min / session · 1–2 sessions per week<br>Facilitator-guided or self-paced at home</div></div>
+  <div class="ladder">
+    <div class="stage s1"><span class="eyebrow">Stage 1 · Sensation</span><b>Learning to read by touch</b><span>Pin familiarisation, two-handed scanning, texture &amp; line discrimination</span></div>
+    <div class="stage s2"><span class="eyebrow">Stage 2 · Perception</span><b>Shapes under the fingertips</b><span>Shape matching, odd-one-out, orientation &amp; size comparison</span></div>
+    <div class="stage s3"><span class="eyebrow">Stage 3 · Cognition</span><b>Mental maps &amp; memory</b><span>Spatial layouts, tactile working memory, rotation &amp; symmetry</span></div>
+    <div class="stage s4"><span class="eyebrow">Stage 4 · Function</span><b>Back to daily life</b><span>Route planning, daily objects, calendars &amp; clocks — independence restored</span></div>
+  </div>
+  <div class="grid g2" id="sessGrid"></div>
+</section>
+
+<section id="device">
+  <div class="sechead"><span class="eyebrow">05 · Send it to the DotPad</span><h2>Live device link</h2>
+    <div class="right">Web Bluetooth · Chrome / Edge over HTTPS<br>DotPad protocol v3 (row-wise live display)</div></div>
+  <div class="devgrid">
+    <div class="devdark">
+      <h3>⌁ Bluetooth connection</h3>
+      <p>Every frame you see on the simulator is mirrored to a paired DotPad as row-level live updates — only changed rows are sent. Hardware keys answer for the trainee: function keys pick options, panning keys steer the maze.</p>
+      <div class="devbtns">
+        <button class="btn btn-lime" id="btnConnect2">Connect DotPad</button>
+        <button class="btn btn-ghost" id="btnSync">Send SYNC pattern</button>
+        <button class="btn btn-ghost" id="btnPulse">Tactile pulse ×5</button>
+        <button class="btn btn-ghost" id="btnClear">All pins down</button>
+      </div>
+      <div class="keymap" style="margin-top:16px; color:rgba(255,255,255,.78)">
+        <b>F1–F4</b> answer options 1–4 &nbsp;·&nbsp; <b>Pan ◀ ▶</b> maze left / right &nbsp;·&nbsp; <b>F1/F2</b> maze up / down
+      </div>
+    </div>
+    <div class="card">
+      <b style="font-size:15px">Device log</b>
+      <div id="devLog" style="margin-top:10px">Ready. Click “Connect DotPad” and pick your device from the Chrome dialog.
+No device nearby? The on-screen simulator runs the full demo.</div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer><div class="wrap">
+  <div class="foot"><span><b>Dot Mind</b> · tactile cognitive training for older adults with acquired vision loss</span>
+  <span class="sdk">DotPad Web SDK-compatible · protocol v3</span></div>
+  <div class="disc">Research-informed concept. Dementia prevention and cognitive benefits have not been established; the dashboard shows simulated demonstration data, not clinical outcomes. Research basis: Pacheco-Barrios et al., <i>Biomedicines</i> 2024;12:2802 (haptic clinical applications, 34 studies); Ortega-Márquez et al., neuroimaging of haptic technology (15 studies); INSIGHT trial protocol (72 participants planned — protocol only). Clinical validation required before any claim of efficacy.</div>
+</div></footer>
+
+<script src="t1.js"></script>
+<script src="t2.js"></script>
+<script src="t3.js"></script>
+<script src="t4.js"></script>
+<script src="t5.js"></script>
+<script src="t6.js"></script>
+<script src="t7.js"></script>
+<script src="t8.js"></script>
+<script src="app-a.js"></script>
+<script src="app-b.js"></script>
+<script src="app-c.js"></script>
+</body>
+</html>
