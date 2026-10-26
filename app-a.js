@@ -118,7 +118,8 @@ async function say(t){lastSaid=t;const tok=++sayTok;
     return;
   }catch(e){}}
   try{if(!('speechSynthesis' in window))return;speechSynthesis.cancel();
-    setTimeout(()=>{if(tok!==sayTok)return;const u=new SpeechSynthesisUtterance(t);u.lang='en-US';u.rate=1.02;speechSynthesis.speak(u);},80);}catch(e){}}
+    await new Promise(r=>setTimeout(r,80));if(tok!==sayTok)return;
+    await new Promise(r=>{const u=new SpeechSynthesisUtterance(t);u.lang='en-US';u.rate=1.02;u.onend=r;u.onerror=r;speechSynthesis.speak(u);});}catch(e){}}
 document.getElementById('btnListen').addEventListener('click',()=>{if(lastSaid)say(lastSaid);});
 loadKokoro(); /* preload Kokoro in the background on page load */
 
