@@ -4,25 +4,29 @@ let cur=null,autoNextT=null;
 /* ---- adaptive difficulty: one variable per task, adjusted one step at a time ---- */
 const ADAPT=new Set(['cal','trace','pairs','maze']);
 const LVL={},STREAK={};
-function adjustLvl(id,ok){if(!ADAPT.has(id))return;
+function adjustLvl(id,ok,hinted){if(!ADAPT.has(id))return;
   if(!ok){LVL[id]=Math.max(0,(LVL[id]??1)-1);STREAK[id]=0;}
+  else if(hinted){STREAK[id]=0;} /* hinted success: hold the level, no streak credit */
   else{STREAK[id]=(STREAK[id]||0)+1;
-    if(STREAK[id]>=2){LVL[id]=Math.min(2,(LVL[id]??1)+1);STREAK[id]=0;}}}
+    if(STREAK[id]>=2){LVL[id]=Math.min(2,(LVL[id]??1)+1);STREAK[id]=0;}}
+  refreshFac();}
 const sessionLog=[]; /* per-trial record for field-test export */
+const sessionNotes=[]; /* facilitator observation notes, kept apart from trial stats */
 
 /* ---- learner profiles: per-person levels & history, persisted in localStorage ---- */
 const LS_DB='dotmind_learners_v1',LS_CUR='dotmind_learner_cur';
 let learner='Guest',sessStartLog=0,sessStartStars=0;
 function lsLoad(){try{return JSON.parse(localStorage.getItem(LS_DB))||{};}catch(e){return{};}}
 function saveLearner(){try{const db=lsLoad();
-  db[learner]={lvl:{...LVL},streak:{...STREAK},log:sessionLog,stars:liveStars,saved:Date.now()};
+  db[learner]={lvl:{...LVL},streak:{...STREAK},log:sessionLog,stars:liveStars,notes:sessionNotes,saved:Date.now()};
   localStorage.setItem(LS_DB,JSON.stringify(db));localStorage.setItem(LS_CUR,learner);}catch(e){}}
 function loadLearner(name){const db=lsLoad(),d=db[name]||{};learner=name;
   for(const k in LVL)delete LVL[k];Object.assign(LVL,d.lvl||{});
   for(const k in STREAK)delete STREAK[k];Object.assign(STREAK,d.streak||{});
   sessionLog.length=0;for(const x of d.log||[])sessionLog.push(x);
   liveStars.length=0;for(const x of d.stars||[])liveStars.push(x);
-  sessStartLog=sessionLog.length;sessStartStars=liveStars.length;
+  sessionNotes.length=0;for(const x of d.notes||[])sessionNotes.push(x);
+  sessStartLog=sessionLog.length;sessStartStars=liveStars.length;refreshFac();
   try{localStorage.setItem(LS_CUR,learner);}catch(e){}
   renderHistory();drawChart();}
 function renderHistory(){const log=$('liveLog');log.innerHTML='';
@@ -30,14 +34,16 @@ function renderHistory(){const log=$('liveLog');log.innerHTML='';
   liveStars.slice(-6).reverse().forEach(st=>{const li=document.createElement('li');
     li.innerHTML=`<span class="ok">★ ${st.score}</span><span>${st.name||'Task'}</span><span class="t">${st.detail||''}</span>`;
     log.appendChild(li);});}
+const escH=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 function refreshLearnerSel(){const sel=$('learnerSel');if(!sel)return;
   const names=Object.keys(lsLoad());if(!names.includes(learner))names.push(learner);
-  sel.innerHTML=names.sort().map(n=>`<option value="${n.replace(/"/g,'&quot;')}"${n===learner?' selected':''}>${n}</option>`).join('')
+  sel.innerHTML=names.sort().map(n=>`<option value="${escH(n)}"${n===learner?' selected':''}>${escH(n)}</option>`).join('')
     +'<option value="__add__">＋ Add learner…</option>';}
 function initLearners(){
   let n='Guest';try{n=localStorage.getItem(LS_CUR)||'Guest';}catch(e){}
   loadLearner(n);saveLearner();refreshLearnerSel();
   $('learnerSel').addEventListener('change',()=>{const v=$('learnerSel').value;
+    if(cur&&!confirm('Switch learner? The current task will stop.')){refreshLearnerSel();return;}
     setPaused(false);
     if(cur){cleanup();cur=null;idleStart();$('btnQuit').hidden=true;
       $('trainerTitle').textContent='Pick a task to begin';$('trainerDom').innerHTML='';}
@@ -85,7 +91,7 @@ function tdotsRender(){const el=$('tdots');el.innerHTML='';
 function nextTrial(){
   if(!cur)return;
   if(cur.trial>=cur.n)return finishTask();
-  cur.trial++;cur.timerOn=false;cur.pausedEl=null;
+  cur.trial++;cur.timerOn=false;cur.pausedEl=null;cur.hintUsed=false;
   const adaptive=ADAPT.has(cur.task.id);
   cur.lvl=adaptive?(LVL[cur.task.id]??1):null;
   $('trialLab').textContent=(cur.task.maze?'Run':'Trial')+` ${cur.trial} of ${cur.n}`+(adaptive?` · Lv ${cur.lvl+1}`:'');
@@ -107,7 +113,7 @@ function runPhases(spec,k){
   $('optRow').innerHTML='';
   cur.ph={spec,k,label:ph.label,remainMs:ph.ms}; /* pausable exposure countdown */
   if(ph.say)say(ph.say);
-  phaseRun();}
+  if(!paused)phaseRun();}
 function phaseRun(){const P=cur.ph;let remain=Math.ceil(P.remainMs/1000);
   $('qText').textContent=P.label+` (${remain}s)`;
   P.started=performance.now();
@@ -134,20 +140,20 @@ function answer(i){
   const spec=cur.spec,rt=(performance.now()-cur.t0)/1000,ok=i===spec.correct;
   [...$('optRow').children].forEach((b,k)=>{if(k===spec.correct)b.classList.add('correct');else if(k===i&&!ok)b.classList.add('wrong');b.disabled=true;});
   cur.res.push({ok,rt,lvl:cur.lvl});tdotsRender();
-  sessionLog.push({task:cur.task.id,trial:cur.trial,lvl:cur.lvl,ok,rt:+rt.toFixed(2),ts:Date.now()});
-  adjustLvl(cur.task.id,ok);saveLearner();
+  sessionLog.push({task:cur.task.id,trial:cur.trial,lvl:cur.lvl,ok,rt:+rt.toFixed(2),hint:cur.hintUsed?1:0,ts:Date.now()});
+  adjustLvl(cur.task.id,ok,cur.hintUsed);saveLearner();
   const f=$('feed');f.textContent=ok?`Correct · ${rt.toFixed(1)}s`:`Not quite — it was “${spec.opts[spec.correct]}” · ${rt.toFixed(1)}s`;
-  f.className='feed '+(ok?'ok':'no');say(ok?'Correct!':'Not quite.');
+  f.className='feed '+(ok?'ok':'no');sayCue(ok?'Correct!':'Not quite.');
   cur.timers.push(setTimeout(nextTrial,1600));}
 function mazeDone(s){cur.timerOn=false;clearInterval(cur.tick);
   const rt=(performance.now()-cur.t0)/1000;
   const eff=Math.min(1,s.optimal/Math.max(1,s.moves));
   cur.res.push({ok:true,rt,moves:s.moves,optimal:s.optimal,eff,lvl:cur.lvl});
-  sessionLog.push({task:'maze',trial:cur.trial,lvl:cur.lvl,ok:true,rt:+rt.toFixed(2),moves:s.moves,optimal:s.optimal,bumps:s.bumps||0,ts:Date.now()});
-  adjustLvl('maze',eff>=0.7);saveLearner();
+  sessionLog.push({task:'maze',trial:cur.trial,lvl:cur.lvl,ok:true,rt:+rt.toFixed(2),moves:s.moves,optimal:s.optimal,bumps:s.bumps||0,hints:s.hints||0,ts:Date.now()});
+  adjustLvl('maze',eff>=0.7,(s.hints||0)>0);saveLearner();
   $('dpad').style.display='none';tdotsRender();
   const f=$('feed');f.textContent=`Escaped! ${s.moves} moves (optimal ${s.optimal}) · ${rt.toFixed(1)}s`;f.className='feed ok';
-  say('You escaped the maze. Well done.');
+  sayCue('You escaped the maze. Well done.');
   cur.timers.push(setTimeout(nextTrial,1200));}
 function finishTask(){
   const t=cur.task,res=cur.res;
@@ -185,12 +191,57 @@ $('btnQuit').addEventListener('click',()=>{setPaused(false);cleanup();cur=null;
   }
   $('btnQuit').hidden=true;idleStart();});
 document.getElementById('btnExport').addEventListener('click',()=>{
-  const payload={app:'Dot Mind Trainer',learner,exported:new Date().toISOString(),trials:sessionLog.length,data:sessionLog};
+  const payload={app:'Dot Mind Trainer',learner,exported:new Date().toISOString(),trials:sessionLog.length,data:sessionLog,notes:sessionNotes};
   const blob=new Blob([JSON.stringify(payload,null,1)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download='dotmind-'+learner.replace(/[^\w-]+/g,'_')+'-'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.json';
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   DP.log('Session data exported ('+sessionLog.length+' trials).');});
+/* ---- facilitator tools: level override, observation notes, weekly summary ---- */
+const FAC_TASKS={cal:'Tactile calendar',trace:'Line tracing',pairs:'Position memory',maze:'Maze escape'};
+function refreshFac(){const host=$('facLvls');if(!host)return;host.innerHTML='';
+  for(const id of Object.keys(FAC_TASKS)){
+    const row=document.createElement('div');row.className='lvlrow';
+    const lab=document.createElement('span');lab.textContent=FAC_TASKS[id];row.appendChild(lab);
+    const sel=document.createElement('select');sel.setAttribute('aria-label','Level for '+FAC_TASKS[id]);
+    [0,1,2].forEach(l=>{const o=document.createElement('option');o.value=l;o.textContent='Level '+(l+1);if((LVL[id]??1)===l)o.selected=true;sel.appendChild(o);});
+    sel.addEventListener('change',()=>{LVL[id]=+sel.value;STREAK[id]=0;saveLearner();
+      DP.log('Facilitator set '+FAC_TASKS[id]+' to Level '+(+sel.value+1)+' for '+learner+' (applies from the next trial).');});
+    row.appendChild(sel);host.appendChild(row);}}
+$('btnNote').addEventListener('click',()=>{const t=$('noteInp').value.trim();if(!t)return;
+  sessionNotes.push({text:t,ts:Date.now()});saveLearner();$('noteInp').value='';
+  DP.log('Note saved for '+learner+': '+t);});
+$('noteInp').addEventListener('keydown',e=>{if(e.key==='Enter')$('btnNote').click();});
+$('btnSummary').addEventListener('click',()=>{
+  const wk=Date.now()-7*864e5;
+  const log=sessionLog.filter(r=>r.ts>=wk);
+  const days=new Set(log.map(r=>new Date(r.ts).toDateString()));
+  let txt;
+  if(!log.length){txt=learner+' — no recorded trials in the last 7 days.';}
+  else{
+    txt=learner+' — last 7 days: '+days.size+' session day'+(days.size===1?'':'s')+', '+log.length+' trials.\n';
+    const byTask={};for(const r of log)(byTask[r.task]=byTask[r.task]||[]).push(r);
+    for(const id of Object.keys(byTask)){const a=byTask[id];
+      const hits=a.filter(r=>r.ok).length;
+      const hints=a.reduce((s,r)=>s+(r.hint||0)+(r.hints||0),0);
+      const rt=(a.reduce((s,r)=>s+r.rt,0)/a.length).toFixed(1);
+      const nm=(TASKS.find(t=>t.id===id)||{}).name||id;
+      txt+='• '+nm+': '+hits+'/'+a.length+' correct · avg '+rt+'s'+(hints?' · '+hints+' hint'+(hints===1?'':'s'):'')+'\n';}}
+  const notes=sessionNotes.filter(n=>n.ts>=wk);
+  if(notes.length)txt+='Notes:\n'+notes.map(n=>'• '+new Date(n.ts).toLocaleDateString()+' — '+n.text).join('\n');
+  const box=$('sumBox');box.hidden=false;box.textContent=txt;
+  say(log.length?`This week, ${learner} practised on ${days.size} day${days.size===1?'':'s'} and completed ${log.length} trials.`:`No practice recorded for ${learner} this week.`);});
+/* ---- hint: one per trial (eliminates a wrong option); maze hints speak the next optimal move ---- */
+$('btnHint').addEventListener('click',()=>{if(paused||!cur||!cur.spec)return;
+  const s=cur.spec;
+  if(s.maze){const dir=mazeHint(s);if(!dir)return;
+    s.hints=(s.hints||0)+1;sayCue('Hint. Try moving '+dir+'.');
+    DP.log('Hint ('+learner+'): move '+dir+'.');return;}
+  if(!cur.awaiting||cur.hintUsed)return;cur.hintUsed=true;
+  const k=pick(s.opts.map((_,i)=>i).filter(i=>i!==s.correct));
+  const b=$('optRow').children[k];if(b)b.classList.add('dim');
+  sayCue('Hint. It is not option '+(k+1)+'.');
+  DP.log('Hint used ('+learner+'): option '+(k+1)+' eliminated.');});
 document.querySelectorAll('#dpad button[data-mv]').forEach(b=>b.addEventListener('click',()=>{if(cur&&cur.spec&&cur.spec.maze)mazeMove(cur.spec,b.dataset.mv);}));
 document.addEventListener('keydown',e=>{
   if((e.key==='p'||e.key==='P')&&!e.repeat&&e.target.tagName!=='SELECT'&&e.target.tagName!=='INPUT'){setPaused(!paused);return;}
@@ -246,8 +297,9 @@ function idleStop(){if(idleT){clearInterval(idleT);idleT=null;}}
     if(!mx.on){mx.x=mx.tx;mx.y=mx.ty;}mx.on=true;},{passive:true});
   document.addEventListener('pointerleave',()=>{mx.on=false;});
   const R=130,R2=R*R;
-  let last=0;
+  let last=0,rafOn=false;
   function frame(ts){
+    if(document.hidden){rafOn=false;return;}
     if(!last)last=ts;const dt=Math.min(ts-last,50)/1000;last=ts;const t=ts/1000;
     mx.x+=(mx.tx-mx.x)*.2;mx.y+=(mx.ty-mx.y)*.2;
     g.clearRect(0,0,W,H);
@@ -270,7 +322,8 @@ function idleStop(){if(idleT){clearInterval(idleT);idleT=null;}}
   resize();addEventListener('resize',resize,{passive:true});
   const mq=matchMedia('(prefers-color-scheme: dark)');
   if(mq.addEventListener)mq.addEventListener('change',()=>{colors();if(reduced)drawStatic();});
-  if(!reduced)requestAnimationFrame(frame);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!reduced&&!rafOn){rafOn=true;last=0;requestAnimationFrame(frame);}});
+  if(!reduced){rafOn=true;requestAnimationFrame(frame);}
 })();
 
 /* ================= init ================= */

@@ -88,12 +88,29 @@
       <div id="voiceStatus" style="font-size:12px;color:var(--mut);min-height:1.2em"></div>
       <div style="display:flex; gap:9px; flex-wrap:wrap">
         <button class="btn btn-ghost" id="btnPause">⏸ Pause</button>
+        <button class="btn btn-ghost" id="btnHint">💡 Hint</button>
         <button class="btn btn-ghost" id="btnListen">🔊 Listen</button>
         <button class="btn btn-ghost" id="btnQuit" hidden>End task</button>
       </div>
       <div id="resultBox" hidden></div>
     </div>
   </div>
+  <details class="card facpanel" id="facPanel">
+    <summary>🛠 Facilitator tools — difficulty override · observation notes · weekly summary</summary>
+    <div class="facgrid">
+      <div>
+        <b class="faclab">Difficulty override (applies from the next trial)</b>
+        <div id="facLvls"></div>
+      </div>
+      <div>
+        <b class="faclab">Observation note</b>
+        <div class="facrow"><input id="noteInp" placeholder="e.g. tired after maze · strong on calendar" maxlength="200"><button class="btn btn-ghost" id="btnNote">Add</button></div>
+        <b class="faclab" style="margin-top:14px">Weekly summary</b>
+        <div class="facrow"><button class="btn btn-ghost" id="btnSummary">Generate &amp; read aloud</button></div>
+        <div id="sumBox" class="sumbox" hidden></div>
+      </div>
+    </div>
+  </details>
 </section>
 
 <section id="curriculum">
