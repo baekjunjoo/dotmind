@@ -69,8 +69,9 @@ const ttsPending=new Map(),ttsCache=new Map(); /* sentence → wav Blob — repe
 const TTS_WORKER_SRC=`
 import {KokoroTTS} from 'https://cdn.jsdelivr.net/npm/kokoro-js@1.2.0/+esm';
 const loading=(async()=>{let tts;
-  try{tts=await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'fp32',device:'webgpu'});}
-  catch(e){tts=await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'q8',device:'wasm'});}
+  try{tts=await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'fp16',device:'webgpu'});}
+  catch(e1){try{tts=await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'fp32',device:'webgpu'});}
+  catch(e2){tts=await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'q8',device:'wasm'});}}
   postMessage({ready:true});return tts;})();
 loading.catch(e=>postMessage({fatal:''+e}));
 onmessage=async e=>{const {id,text}=e.data;
@@ -84,7 +85,7 @@ function loadKokoro(){
     ttsWorker=new Worker(URL.createObjectURL(new Blob([TTS_WORKER_SRC],{type:'text/javascript'})),{type:'module'});
     ttsWorker.onmessage=e=>{const d=e.data;
       if(d.ready){kokoroReady=true;if(st)st.textContent='';DP.log('Kokoro-82M TTS ready (worker · hexgrad/Kokoro-82M via kokoro-js).');
-        ['Wall.','Correct!','Not quite.'].forEach(tx=>ttsGen(tx).catch(()=>{}));return;}
+        warmVoice();return;}
       if(d.fatal){if(st)st.textContent='';DP.log('Kokoro TTS unavailable — using the system voice: '+d.fatal);
         try{ttsWorker.terminate();}catch(e2){}ttsWorker=null;kokoroReady=false;
         ttsPending.forEach(p=>p.reject(new Error(d.fatal)));ttsPending.clear();return;}
@@ -99,9 +100,30 @@ function ttsGen(text){
   if(!ttsWorker||!kokoroReady)return Promise.reject(new Error('tts not ready'));
   const id=++ttsSeq;
   return new Promise((resolve,reject)=>{
-    ttsPending.set(id,{resolve:b=>{if(ttsCache.size>60)ttsCache.delete(ttsCache.keys().next().value);
+    ttsPending.set(id,{resolve:b=>{if(ttsCache.size>120)ttsCache.delete(ttsCache.keys().next().value);
       ttsCache.set(text,b);resolve(b);},reject});
     ttsWorker.postMessage({id,text});});}
+const WARM_LINES=['Wall.','Correct!','Not quite.','You escaped the maze. Well done.',
+ 'Choose a position from one to four.','Hint.','Try moving left.','Try moving right.','Try moving up.','Try moving down.',
+ 'It is not option 1.','It is not option 2.','It is not option 3.','It is not option 4.',
+ 'Feel the calendar grid. Which weekday holds the raised mark?',
+ 'Feel the clock face. What time is it showing?',
+ 'Which season does this tactile symbol stand for?',
+ 'Four shapes in a row. Which one feels different?',
+ 'Trace line A from the top left marker. Which endpoint does it reach?',
+ 'How many solid squares can you find?',
+ 'Which candidate matches the block rotated ninety degrees clockwise?',
+ 'Which mirror symmetry does this shape have?',
+ 'Where was the circle?','Where was the square?','Where was the triangle?','Where was the cross?',
+ 'Which order did the three shapes appear in?',
+ 'Find your way from the top left to the diamond at the bottom right. On the DotPad: F1 moves left, F2 up, F3 down, and F4 right.',
+ 'Which shape completes the empty cell?',
+ 'Which position does not belong with the round shapes?'];
+function warmVoice(){ /* pre-synthesise fixed narration, one sentence at a time, between live requests */
+  let q=[];for(const t of WARM_LINES)q.push(...(t.match(/[^.?!]+[.?!]?/g)||[t]).map(p=>p.trim()).filter(Boolean));
+  q=[...new Set(q)];
+  (function next(){if(!q.length||!kokoroReady||!ttsWorker)return;
+    ttsGen(q.shift()).catch(()=>{}).finally(()=>setTimeout(next,200));})();}
 function stopAudio(){if(kokoroAudio){try{kokoroAudio.pause();}catch(e){}if(kokoroAudio._done)kokoroAudio._done();kokoroAudio=null;}}
 function cancelSpeech(){sayTok++;stopAudio();try{speechSynthesis.cancel();}catch(e){}}
 async function say(t){lastSaid=t;if(paused)return new Promise(()=>{}); /* queued; replayed on resume */
