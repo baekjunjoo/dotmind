@@ -148,12 +148,6 @@ function idleStart(){idleStop();setBraille('dot mind');idleFrame();
   idleT=setInterval(()=>{if(cur){idleStop();return;}idlePhase++;idleFrame();},1400);}
 function idleStop(){if(idleT){clearInterval(idleT);idleT=null;}}
 
-/* ================= ticker motion ================= */
-setInterval(()=>{document.querySelectorAll('[data-tick]').forEach(el=>{
-  const v=+el.dataset.tick + ri(1,9)*( el.dataset.tick>1000?8:1 );
-  el.dataset.tick=v;el.classList.add('tick');
-  setTimeout(()=>{el.textContent=v.toLocaleString('en-US');el.classList.remove('tick');},260);});},2600);
-
 /* ================= interactive speckle background (AccessRadar-style particles) ================= */
 (function(){
   const cnv=document.getElementById('bgdots');if(!cnv)return;
