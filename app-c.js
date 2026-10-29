@@ -1,6 +1,14 @@
 /* ================= trial engine ================= */
 const $=id=>document.getElementById(id);
 let cur=null,autoNextT=null;
+/* ---- adaptive difficulty: one variable per task, adjusted one step at a time ---- */
+const ADAPT=new Set(['cal','trace','pairs','maze']);
+const LVL={},STREAK={};
+function adjustLvl(id,ok){if(!ADAPT.has(id))return;
+  if(!ok){LVL[id]=Math.max(0,(LVL[id]??1)-1);STREAK[id]=0;}
+  else{STREAK[id]=(STREAK[id]||0)+1;
+    if(STREAK[id]>=2){LVL[id]=Math.min(2,(LVL[id]??1)+1);STREAK[id]=0;}}}
+const sessionLog=[]; /* per-trial record for field-test export */
 function cleanup(){if(autoNextT){clearTimeout(autoNextT);autoNextT=null;}
   if(cur){cur.timers?.forEach(t=>clearTimeout(t));if(cur.tick)clearInterval(cur.tick);if(cur.cd)clearInterval(cur.cd);}
   $('dpad').style.display='none';$('optRow').innerHTML='';$('feed').textContent='';$('feed').className='feed';$('timer').textContent='';$('resultBox').hidden=true;}
@@ -19,9 +27,13 @@ function tdotsRender(){const el=$('tdots');el.innerHTML='';
 function nextTrial(){
   if(!cur)return;
   if(cur.trial>=cur.n)return finishTask();
-  cur.trial++;$('trialLab').textContent=(cur.task.maze?'Run':'Trial')+` ${cur.trial} of ${cur.n}`;tdotsRender();
+  cur.trial++;
+  const adaptive=ADAPT.has(cur.task.id);
+  cur.lvl=adaptive?(LVL[cur.task.id]??1):null;
+  $('trialLab').textContent=(cur.task.maze?'Run':'Trial')+` ${cur.trial} of ${cur.n}`+(adaptive?` · Lv ${cur.lvl+1}`:'');
+  tdotsRender();
   $('feed').textContent='';$('feed').className='feed';
-  const spec=cur.task.gen();cur.spec=spec;
+  const spec=adaptive?cur.task.gen(cur.lvl):cur.task.gen();cur.spec=spec;
   setBraille(spec.brl||'');
   if(spec.maze){cur.t0=performance.now();drawMaze(spec);
     $('qText').textContent=spec.q;$('timer').textContent='';
@@ -60,14 +72,18 @@ function answer(i){
   if(!cur||!cur.awaiting)return;cur.awaiting=false;clearInterval(cur.tick);
   const spec=cur.spec,rt=(performance.now()-cur.t0)/1000,ok=i===spec.correct;
   [...$('optRow').children].forEach((b,k)=>{if(k===spec.correct)b.classList.add('correct');else if(k===i&&!ok)b.classList.add('wrong');b.disabled=true;});
-  cur.res.push({ok,rt});tdotsRender();
+  cur.res.push({ok,rt,lvl:cur.lvl});tdotsRender();
+  sessionLog.push({task:cur.task.id,trial:cur.trial,lvl:cur.lvl,ok,rt:+rt.toFixed(2),ts:Date.now()});
+  adjustLvl(cur.task.id,ok);
   const f=$('feed');f.textContent=ok?`Correct · ${rt.toFixed(1)}s`:`Not quite — it was “${spec.opts[spec.correct]}” · ${rt.toFixed(1)}s`;
   f.className='feed '+(ok?'ok':'no');say(ok?'Correct!':'Not quite.');
   cur.timers.push(setTimeout(nextTrial,1600));}
 function mazeDone(s){clearInterval(cur.tick);
   const rt=(performance.now()-cur.t0)/1000;
   const eff=Math.min(1,s.optimal/Math.max(1,s.moves));
-  cur.res.push({ok:true,rt,moves:s.moves,optimal:s.optimal,eff});
+  cur.res.push({ok:true,rt,moves:s.moves,optimal:s.optimal,eff,lvl:cur.lvl});
+  sessionLog.push({task:'maze',trial:cur.trial,lvl:cur.lvl,ok:true,rt:+rt.toFixed(2),moves:s.moves,optimal:s.optimal,ts:Date.now()});
+  adjustLvl('maze',eff>=0.7);
   $('dpad').style.display='none';tdotsRender();
   const f=$('feed');f.textContent=`Escaped! ${s.moves} moves (optimal ${s.optimal}) · ${rt.toFixed(1)}s`;f.className='feed ok';
   say('You escaped the maze. Well done.');
@@ -96,8 +112,22 @@ function finishTask(){
   autoNextT=setTimeout(()=>{autoNextT=null;startTask(nxt);},6000);}
 $('btnQuit').addEventListener('click',()=>{cleanup();cur=null;
   $('trainerTitle').textContent='Pick a task to begin';$('trainerDom').innerHTML='';
-  $('qText').textContent='Select any task card above. Each task runs six short trials; accuracy and response time are recorded and plotted on the recovery dashboard.';
+  if(sessionLog.length){ /* spoken end-of-session summary */
+    const n=sessionLog.length,hits=sessionLog.filter(r=>r.ok).length,tasksDone=liveStars.length;
+    const sum=`Session finished. Today you completed ${tasksDone} task${tasksDone===1?'':'s'} and ${n} trial${n===1?'':'s'} — ${hits} correct. Well done.`;
+    $('qText').textContent=sum+' You can export this session’s data from the dashboard above.';
+    say(sum);
+  }else{
+    $('qText').textContent='Select any task card above. Each task runs six short trials; accuracy and response time are recorded and plotted on the recovery dashboard.';
+  }
   $('btnQuit').hidden=true;idleStart();});
+document.getElementById('btnExport').addEventListener('click',()=>{
+  const payload={app:'Dot Mind Trainer',exported:new Date().toISOString(),trials:sessionLog.length,data:sessionLog};
+  const blob=new Blob([JSON.stringify(payload,null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='dotmind-session-'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.json';
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  DP.log('Session data exported ('+sessionLog.length+' trials).');});
 document.querySelectorAll('#dpad button[data-mv]').forEach(b=>b.addEventListener('click',()=>{if(cur&&cur.spec&&cur.spec.maze)mazeMove(cur.spec,b.dataset.mv);}));
 document.addEventListener('keydown',e=>{
   if(cur&&cur.spec&&cur.spec.maze){const m={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'}[e.key];
