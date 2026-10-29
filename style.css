@@ -1,3 +1,4 @@
+
 /* Layout: Ramp-style light fintech sheet — warm paper, dot-grid, ink type, lime CTA; Amicro pill buttons */
 :root{
   --bg:#faf9f7; --panel:#ffffff; --ink:#0c0a08; --mut:#716d64; --line:#e7e4de;
@@ -90,6 +91,9 @@ body::before{content:""; position:fixed; inset:0 0 auto; height:env(safe-area-in
 .tickin .tlab i{font-style:normal; color:var(--lime-ink); background:var(--lime); border-radius:4px; width:16px; height:16px; display:inline-flex; align-items:center; justify-content:center; font-size:10px;}
 .tickin b{color:var(--ink); background:var(--soft); border:1px solid var(--line); border-radius:4px; padding:2px 7px; font-weight:500; transition:opacity .3s, transform .3s;}
 .tickin b.tick{opacity:.25; transform:translateY(-3px);}
+/* learner selector & pause */
+#learnerSel{background:var(--soft);border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:8px 14px;font-family:var(--mono);font-size:12px;cursor:pointer;max-width:170px}
+#btnPause.paused{background:var(--lime);color:var(--lime-ink);border-color:var(--lime)}
 
 /* sections */
 section{padding-block:54px 8px;}
