@@ -21,9 +21,12 @@ function optsFrom(list,correctVal,n=4){const others=shuffle(list.filter(x=>x!==c
 
 const TASKS=[
 /* ---- Orientation ---- */
-{id:'cal',dom:'orientation',name:'Tactile calendar',desc:'Find today on a raised month grid and name its weekday.',gen(){
+{id:'cal',dom:'orientation',name:'Tactile calendar',desc:'Find today on a raised month grid and name its weekday.',gen(lvl=1){
   const col=ri(0,6),row=ri(0,4);
-  const draw=()=>{for(let c=0;c<=7;c++)VL(2+c*8,4,38);for(let r=0;r<=5;r++)HL(2,58,4+r*7);FR(2+col*8+2,4+row*7+2,5,4);};
+  const nDis=[0,2,4][lvl]||0; /* adaptive variable: distractor outline marks */
+  const dis=shuffle(Array.from({length:35},(_,i)=>i).filter(i=>i!==row*7+col)).slice(0,nDis);
+  const draw=()=>{for(let c=0;c<=7;c++)VL(2+c*8,4,38);for(let r=0;r<=5;r++)HL(2,58,4+r*7);FR(2+col*8+2,4+row*7+2,5,4);
+    for(const d of dis)C(2+(d%7)*8+4,4+Math.floor(d/7)*7+3,2);};
   const o=optsFrom(DAYS,DAYS[col],4);
   return {draw,q:'A calendar grid — Monday is the left column. Which weekday column holds the raised “today” mark?',...o,brl:'calendar',say:'Feel the calendar grid. Which weekday holds the raised mark?'};}},
 {id:'clock',dom:'orientation',name:'Tactile analog clock',desc:'Read the hour and minute hands by touch.',gen(){
@@ -50,8 +53,12 @@ const TASKS=[
   const odd=ri(0,3),oddShape=pick(['square','triangle']),xs=[7,21,35,49];
   const draw=()=>{xs.forEach((x,i)=>{if(i===odd)drawShapeAt(oddShape,x+2,20,4);else C(x+2,20,4);});};
   return {draw,q:'Four shapes in a row. Which position (1–4, left to right) feels different?',opts:['1','2','3','4'],correct:odd,brl:'odd one out',say:'Four shapes in a row. Which one feels different?'};}},
-{id:'trace',dom:'attention',name:'Line tracing',desc:'Follow a tangled line from its start to the right endpoint.',gen(){
-  const ys=[6,15,24,33],perm=shuffle([0,1,2,3]),off=[-2,-1,1,2];
+{id:'trace',dom:'attention',name:'Line tracing',desc:'Follow a tangled line from its start to the right endpoint.',gen(lvl=1){
+  const ys=[6,15,24,33];
+  let perm; /* adaptive variable: entanglement */
+  if(lvl===0){perm=[0,1,2,3];const k=ri(0,2);[perm[k],perm[k+1]]=[perm[k+1],perm[k]];}
+  else perm=shuffle([0,1,2,3]);
+  const off=lvl===2?[-5,-3,3,5]:[-2,-1,1,2];
   const draw=()=>{for(let i=0;i<4;i++){FR(0,ys[i]-1,3,3);
       const ym=(ys[i]+ys[perm[i]])/2+off[i];
       L(4,ys[i],20,ys[i]);L(20,ys[i],33,ym);L(33,ym,46,ys[perm[i]]);L(46,ys[perm[i]],55,ys[perm[i]]);}
@@ -99,12 +106,13 @@ const TASKS=[
   const draw=pick(CLASSES[ci][1]);
   return {draw,q:'One shape, centred on the pad. Which mirror symmetry does it have?',opts:CLASSES.map(c=>c[0]),correct:ci,brl:'mirror',say:'Which mirror symmetry does this shape have?'};}},
 /* ---- Memory ---- */
-{id:'pairs',dom:'memory',name:'Position memory',desc:'Memorise four shapes for 8 seconds, then recall one.',gen(){
+{id:'pairs',dom:'memory',name:'Position memory',desc:'Memorise four shapes for 8 seconds, then recall one.',gen(lvl=1){
+  const expo=[12000,8000,5000][lvl]||8000; /* adaptive variable: exposure time */
   const shapes=shuffle(['circle','square','triangle','cross']),xs=[8,22,36,50];
   const target=pick(shapes),slot=shapes.indexOf(target);
   const layout=()=>{xs.forEach((x,i)=>{drawShapeAt(shapes[i],x+2,18,4);HL(x-1,x+6,27);});};
   const qdraw=()=>{xs.forEach(x=>HL(x-1,x+6,27));};
-  return {phases:[{draw:layout,ms:8000,label:'Memorise the four shapes…'}],qdraw,
+  return {phases:[{draw:layout,ms:expo,label:'Memorise the four shapes…'}],qdraw,
     q:`The pad is blank again. Where was the ${target}? (1–4, left to right)`,opts:['1','2','3','4'],correct:slot,brl:'memory',say:`Where was the ${target}?`};}},
 {id:'seq',dom:'memory',name:'Sequence recall',desc:'Three shapes appear in turn — recall their order.',gen(){
   const order=shuffle(['circle','square','triangle']);
@@ -121,7 +129,7 @@ const TASKS=[
   return {phases:[{draw,ms:9000,label:'Explore the map while listening…',say:story}],qdraw:draw,keep:true,
     q:`${story} — What do you reach right after crossing the bridge?`,...o,brl:'journey',say:story+' What comes right after the bridge?'};}},
 /* ---- Executive ---- */
-{id:'maze',dom:'executive',name:'Maze escape',desc:'Feel the walls, plan a route, walk to the exit.',maze:true,gen(){return genMaze();}},
+{id:'maze',dom:'executive',name:'Maze escape',desc:'Feel the walls, plan a route, walk to the exit.',maze:true,gen(lvl=1){return genMaze(lvl);}},
 {id:'sudoku',dom:'executive',name:'Shape sudoku 4×4',desc:'Complete the row so no shape repeats.',gen(){
   const base=shuffle(['circle','square','triangle','cross']);
   const grid=[0,1,2,3].map(r=>[0,1,2,3].map(c=>base[(r+c)%4]));
@@ -162,8 +170,8 @@ function buildTaskGrid(){
 }
 
 /* ================= maze ================= */
-function genMaze(){
-  const CO=7,RO=5;
+function genMaze(lvl=1){
+  const [CO,RO,cs]=[[5,4,9],[7,5,8],[9,6,6]][lvl]||[7,5,8]; /* adaptive variable: maze size */
   const vis=Array.from({length:RO},()=>Array(CO).fill(false));
   const wallsH=Array.from({length:RO+1},()=>Array(CO).fill(true));
   const wallsV=Array.from({length:RO},()=>Array(CO+1).fill(true));
@@ -180,15 +188,15 @@ function genMaze(){
   while(qq.length){const [r,c]=qq.shift();
     const steps=[[r-1,c,()=>!wallsH[r][c]],[r+1,c,()=>!wallsH[r+1][c]],[r,c-1,()=>!wallsV[r][c]],[r,c+1,()=>!wallsV[r][c+1]]];
     for(const [rr,cc,open] of steps)if(rr>=0&&rr<RO&&cc>=0&&cc<CO&&dist[rr][cc]<0&&open()){dist[rr][cc]=dist[r][c]+1;qq.push([rr,cc]);}}
-  return {maze:true,wallsH,wallsV,RO,CO,player:[0,0],goal:[RO-1,CO-1],moves:0,optimal:dist[RO-1][CO-1],
+  return {maze:true,wallsH,wallsV,RO,CO,cs,player:[0,0],goal:[RO-1,CO-1],moves:0,optimal:dist[RO-1][CO-1],
     q:'A maze. You start top-left; the exit (diamond) is bottom-right. Raised lines are walls — DotPad keys: F1 left, F2 up, F3 down, F4 right (arrow keys also work).',brl:'maze',
     say:'Find your way from the top left to the diamond at the bottom right. On the DotPad: F1 moves left, F2 up, F3 down, and F4 right.'};
 }
-function drawMaze(s){clearFB();const ox=2,oy=0,cs=8;
+function drawMaze(s){clearFB();const ox=2,oy=0,cs=s.cs||8,ctr=Math.floor(cs/2),po=(cs-3)>>1;
   for(let r=0;r<=s.RO;r++)for(let c=0;c<s.CO;c++)if(s.wallsH[r][c])HL(ox+c*cs,ox+c*cs+cs,oy+r*cs);
   for(let r=0;r<s.RO;r++)for(let c=0;c<=s.CO;c++)if(s.wallsV[r][c])VL(ox+c*cs,oy+r*cs,oy+r*cs+cs);
-  DIAMOND(ox+s.goal[1]*cs+4,oy+s.goal[0]*cs+4,2);
-  FR(ox+s.player[1]*cs+3,oy+s.player[0]*cs+3,3,3);
+  DIAMOND(ox+s.goal[1]*cs+ctr,oy+s.goal[0]*cs+ctr,2);
+  FR(ox+s.player[1]*cs+po,oy+s.player[0]*cs+po,3,3);
   requestPaint();}
 function mazeMove(s,dir){const [r,c]=s.player;let nr=r,nc=c;
   if(dir==='up'&&!s.wallsH[r][c])nr--;else if(dir==='down'&&!s.wallsH[r+1][c])nr++;
