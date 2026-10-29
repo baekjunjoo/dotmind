@@ -112,6 +112,11 @@ body::before{content:""; position:fixed; inset:0 0 auto; height:env(safe-area-in
 .lvlrow select{background:var(--soft);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:5px 8px;font-family:var(--font);font-size:12.5px;cursor:pointer}
 .sumbox{margin-top:10px;font-size:12.5px;font-family:var(--mono);background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:12px 14px;white-space:pre-wrap;line-height:1.6}
 .opt.dim{opacity:.32;pointer-events:none}
+/* AliveDot motion cards & controls */
+.motcard{padding:16px;gap:7px}
+.motcard .motico{font-size:44px;line-height:1;align-self:center;margin:12px 0 4px;filter:grayscale(1) contrast(1.1) brightness(1.55);opacity:.95}
+#motCtrl{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+#motLab{font-size:12.5px;color:var(--mut);margin-left:4px}
 
 /* sections */
 section{padding-block:54px 8px;}
