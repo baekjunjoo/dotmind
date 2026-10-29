@@ -94,11 +94,29 @@ function startMotion(m){if(paused)setPaused(false);
   const at=mot; /* auto-play once the description has been read aloud */
   say(m.say+' On the DotPad: F1 previous frame, F2 play or pause, F3 next frame.')
     .then(()=>{if(mot===at&&mot&&!mot.playing)motPlay(true);});}
-/* animal cards */
-(function(){const host=$('motGrid');if(!host)return;
-  MOTIONS.forEach(m=>{const b=document.createElement('button');b.className='taskcard motcard';
-    b.innerHTML=`<span class="arrow">↗</span><b>${m.name}</b><span>${m.desc}</span><span class="motico" aria-hidden="true">${m.icon}</span>`;
-    b.addEventListener('click',()=>startMotion(m));host.appendChild(b);});})();
+/* pin-art thumbnails rendered at runtime from each animal's key frame (no embedded images) */
+const MOT_KEYF={fish:1,bird:4,frog:2,rabbit:2,dolphin:3};
+function motThumb(m){const save=fb.slice();clearFB();m.draw(MOT_KEYF[m.id]??0);
+  const c=document.createElement('canvas');c.width=640;c.height=438;const g=c.getContext('2d');
+  const ox=22,oy=14,pitch=10,TAU=6.2832;
+  g.fillStyle='rgba(255,255,255,0.11)';g.beginPath();
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(!fb[y*W+x]){const px=ox+x*pitch,py=oy+y*pitch;g.moveTo(px+2.1,py);g.arc(px,py,2.1,0,TAU);}
+  g.fill();
+  g.fillStyle='#e4f222';g.shadowColor='rgba(228,242,34,.8)';g.shadowBlur=7;g.beginPath();
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(fb[y*W+x]){const px=ox+x*pitch,py=oy+y*pitch;g.moveTo(px+3.6,py);g.arc(px,py,3.6,0,TAU);}
+  g.fill();g.shadowBlur=0;
+  fb.set(save);
+  try{return c.toDataURL('image/webp',0.72);}catch(e){return c.toDataURL();}}
+/* animal cards — appended to the task grid as their own domain group */
+(function(){const host=document.getElementById('taskGrid');if(!host)return;
+  const g=document.createElement('div');g.className='domgroup';
+  g.innerHTML=`<h3><span class="domchip">Tactile motion</span><span class="stagechip">play & frame-by-frame observation · AliveDot</span></h3>`;
+  const row=document.createElement('div');row.className='grid g3';
+  MOTIONS.forEach(m=>{const b=document.createElement('button');b.className='taskcard';b.id='mc-'+m.id;
+    b.innerHTML=`<span class="arrow">↗</span><b>${m.name}</b><span>${m.desc}</span><span class="minipad"><img class="thumb" alt="" loading="lazy"></span>`;
+    b.querySelector('.thumb').src=motThumb(m);
+    b.addEventListener('click',()=>startMotion(m));row.appendChild(b);});
+  g.appendChild(row);host.appendChild(g);})();
 /* controls */
 $('btnMotPrev').addEventListener('click',()=>motStep(-1));
 $('btnMotNext').addEventListener('click',()=>motStep(1));
