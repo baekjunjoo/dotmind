@@ -83,7 +83,8 @@ function loadKokoro(){
   try{
     ttsWorker=new Worker(URL.createObjectURL(new Blob([TTS_WORKER_SRC],{type:'text/javascript'})),{type:'module'});
     ttsWorker.onmessage=e=>{const d=e.data;
-      if(d.ready){kokoroReady=true;if(st)st.textContent='';DP.log('Kokoro-82M TTS ready (worker · hexgrad/Kokoro-82M via kokoro-js).');return;}
+      if(d.ready){kokoroReady=true;if(st)st.textContent='';DP.log('Kokoro-82M TTS ready (worker · hexgrad/Kokoro-82M via kokoro-js).');
+        ['Wall.','Correct!','Not quite.'].forEach(tx=>ttsGen(tx).catch(()=>{}));return;}
       if(d.fatal){if(st)st.textContent='';DP.log('Kokoro TTS unavailable — using the system voice: '+d.fatal);
         try{ttsWorker.terminate();}catch(e2){}ttsWorker=null;kokoroReady=false;
         ttsPending.forEach(p=>p.reject(new Error(d.fatal)));ttsPending.clear();return;}
@@ -124,6 +125,7 @@ async function say(t){lastSaid=t;if(paused)return new Promise(()=>{}); /* queued
   try{if(!('speechSynthesis' in window))return;speechSynthesis.cancel();
     await new Promise(r=>setTimeout(r,80));if(tok!==sayTok)return;
     await new Promise(r=>{const u=new SpeechSynthesisUtterance(t);u.lang='en-US';u.rate=1.02;u.onend=r;u.onerror=r;speechSynthesis.speak(u);});}catch(e){}}
+function sayCue(t){const keep=lastSaid;const p=say(t);lastSaid=keep;return p;} /* short cue — does not become the Listen/replay text */
 document.getElementById('btnListen').addEventListener('click',()=>{if(lastSaid)say(lastSaid);});
 loadKokoro(); /* preload Kokoro in the background on page load */
 

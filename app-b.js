@@ -200,11 +200,22 @@ function drawMaze(s,hidePlayer){clearFB();const ox=2,oy=0,cs=s.cs||8,ctr=Math.fl
   requestPaint();}
 let bumpT=null;
 function wallBump(s){ /* boundary feedback: spoken cue + tactile throb of the player marker */
-  say('Wall.');
+  sayCue('Wall.');
   if(bumpT)clearInterval(bumpT);let k=0;
   bumpT=setInterval(()=>{k++;
     if(k>4||!cur||cur.spec!==s){clearInterval(bumpT);bumpT=null;drawMaze(s);return;}
     drawMaze(s,k%2===1);},160);}
+function mazeHint(s){ /* BFS from the goal; return the direction of the next optimal step */
+  const {RO,CO,wallsH,wallsV}=s;
+  const dist=Array.from({length:RO},()=>Array(CO).fill(-1));
+  dist[s.goal[0]][s.goal[1]]=0;const q=[s.goal.slice()];
+  while(q.length){const [r,c]=q.shift();
+    const st=[[r-1,c,()=>!wallsH[r][c]],[r+1,c,()=>!wallsH[r+1][c]],[r,c-1,()=>!wallsV[r][c]],[r,c+1,()=>!wallsV[r][c+1]]];
+    for(const [rr,cc,open] of st)if(rr>=0&&rr<RO&&cc>=0&&cc<CO&&dist[rr][cc]<0&&open()){dist[rr][cc]=dist[r][c]+1;q.push([rr,cc]);}}
+  const [pr,pc]=s.player;
+  const cand=[['up',pr-1,pc,()=>!wallsH[pr][pc]],['down',pr+1,pc,()=>!wallsH[pr+1][pc]],['left',pr,pc-1,()=>!wallsV[pr][pc]],['right',pr,pc+1,()=>!wallsV[pr][pc+1]]];
+  for(const [dir,rr,cc,open] of cand)if(rr>=0&&rr<RO&&cc>=0&&cc<CO&&open()&&dist[rr][cc]===dist[pr][pc]-1)return dir;
+  return null;}
 function mazeMove(s,dir){if(paused)return;const [r,c]=s.player;let nr=r,nc=c;
   if(dir==='up'&&!s.wallsH[r][c])nr--;else if(dir==='down'&&!s.wallsH[r+1][c])nr++;
   else if(dir==='left'&&!s.wallsV[r][c])nc--;else if(dir==='right'&&!s.wallsV[r][c+1])nc++;
