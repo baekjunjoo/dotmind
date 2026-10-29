@@ -1,3 +1,4 @@
+
 'use strict';
 /* ================= framebuffer & drawing ================= */
 const W=60,H=40,fb=new Uint8Array(W*H);
@@ -63,6 +64,7 @@ function requestPaint(){if(!rafQ){rafQ=true;requestAnimationFrame(paint);}
 
 /* ================= speech — Kokoro-82M neural TTS in a Web Worker (keeps the UI responsive) ================= */
 let lastSaid='',kokoroReady=false,kokoroAudio=null,sayTok=0,ttsWorker=null,ttsSeq=0;
+let paused=false,pendingNext=null; /* session pause state & queued next task */
 const ttsPending=new Map(),ttsCache=new Map(); /* sentence → wav Blob — repeated prompts replay instantly */
 const TTS_WORKER_SRC=`
 import {KokoroTTS} from 'https://cdn.jsdelivr.net/npm/kokoro-js@1.2.0/+esm';
@@ -100,7 +102,9 @@ function ttsGen(text){
       ttsCache.set(text,b);resolve(b);},reject});
     ttsWorker.postMessage({id,text});});}
 function stopAudio(){if(kokoroAudio){try{kokoroAudio.pause();}catch(e){}if(kokoroAudio._done)kokoroAudio._done();kokoroAudio=null;}}
-async function say(t){lastSaid=t;const tok=++sayTok;
+function cancelSpeech(){sayTok++;stopAudio();try{speechSynthesis.cancel();}catch(e){}}
+async function say(t){lastSaid=t;if(paused)return new Promise(()=>{}); /* queued; replayed on resume */
+  const tok=++sayTok;
   if(ttsWorker&&kokoroReady){try{
     stopAudio();
     /* sentence-chunked: the first sentence plays at once, the next is synthesised while the current plays */
@@ -224,7 +228,7 @@ function drawChart(){
   s+=`<text x="${xi(7)+14}" y="${yv(78)+4}" font-weight="600" fill="var(--blue)">78</text>`;
   s+=`<text x="${xi(8)}" y="${Hc-12}" text-anchor="middle" font-weight="600">Today</text>`;
   s+=`<line x1="${xi(7.55)}" x2="${xi(7.55)}" y1="${t}" y2="${Hc-b}" stroke="var(--line)" stroke-dasharray="3 4"/>`;
-  for(const st of liveStars){
+  for(const st of liveStars.slice(-8)){
     const x=xi(8)+(st.k%2?7:-7)*(st.k>1?1:0), y=yv(st.score);
     s+=`<text x="${x}" y="${y+5}" text-anchor="middle" font-size="17" fill="var(--lime)" stroke="var(--ink)" stroke-width="0.8">★</text>`;
     s+=`<text x="${x}" y="${y+18}" text-anchor="middle">${st.score}</text>`;}

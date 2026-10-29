@@ -192,15 +192,22 @@ function genMaze(lvl=1){
     q:'A maze. You start top-left; the exit (diamond) is bottom-right. Raised lines are walls — DotPad keys: F1 left, F2 up, F3 down, F4 right (arrow keys also work).',brl:'maze',
     say:'Find your way from the top left to the diamond at the bottom right. On the DotPad: F1 moves left, F2 up, F3 down, and F4 right.'};
 }
-function drawMaze(s){clearFB();const ox=2,oy=0,cs=s.cs||8,ctr=Math.floor(cs/2),po=(cs-3)>>1;
+function drawMaze(s,hidePlayer){clearFB();const ox=2,oy=0,cs=s.cs||8,ctr=Math.floor(cs/2),po=(cs-3)>>1;
   for(let r=0;r<=s.RO;r++)for(let c=0;c<s.CO;c++)if(s.wallsH[r][c])HL(ox+c*cs,ox+c*cs+cs,oy+r*cs);
   for(let r=0;r<s.RO;r++)for(let c=0;c<=s.CO;c++)if(s.wallsV[r][c])VL(ox+c*cs,oy+r*cs,oy+r*cs+cs);
   DIAMOND(ox+s.goal[1]*cs+ctr,oy+s.goal[0]*cs+ctr,2);
-  FR(ox+s.player[1]*cs+po,oy+s.player[0]*cs+po,3,3);
+  if(!hidePlayer)FR(ox+s.player[1]*cs+po,oy+s.player[0]*cs+po,3,3);
   requestPaint();}
-function mazeMove(s,dir){const [r,c]=s.player;let nr=r,nc=c;
+let bumpT=null;
+function wallBump(s){ /* boundary feedback: spoken cue + tactile throb of the player marker */
+  say('Wall.');
+  if(bumpT)clearInterval(bumpT);let k=0;
+  bumpT=setInterval(()=>{k++;
+    if(k>4||!cur||cur.spec!==s){clearInterval(bumpT);bumpT=null;drawMaze(s);return;}
+    drawMaze(s,k%2===1);},160);}
+function mazeMove(s,dir){if(paused)return;const [r,c]=s.player;let nr=r,nc=c;
   if(dir==='up'&&!s.wallsH[r][c])nr--;else if(dir==='down'&&!s.wallsH[r+1][c])nr++;
   else if(dir==='left'&&!s.wallsV[r][c])nc--;else if(dir==='right'&&!s.wallsV[r][c+1])nc++;
-  else return;
+  else{s.bumps=(s.bumps||0)+1;wallBump(s);return;}
   s.player=[nr,nc];s.moves++;drawMaze(s);
   if(nr===s.goal[0]&&nc===s.goal[1])mazeDone(s);}
