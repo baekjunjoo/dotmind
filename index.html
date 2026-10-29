@@ -84,6 +84,13 @@
         <button class="blank"></button><button data-mv="up" aria-label="up">↑</button><button class="blank"></button>
         <button data-mv="left" aria-label="left">←</button><button data-mv="down" aria-label="down">↓</button><button data-mv="right" aria-label="right">→</button>
       </div>
+      <div id="motCtrl" hidden>
+        <button class="btn btn-lime" id="btnMotPlay">▶ Play</button>
+        <button class="btn btn-ghost" id="btnMotPrev">⏮ Prev frame</button>
+        <button class="btn btn-ghost" id="btnMotNext">⏭ Next frame</button>
+        <button class="btn btn-ghost" id="btnMotClose">✕ Close</button>
+        <span id="motLab" class="num"></span>
+      </div>
       <div class="feed" id="feed"></div>
       <div id="voiceStatus" style="font-size:12px;color:var(--mut);min-height:1.2em"></div>
       <div style="display:flex; gap:9px; flex-wrap:wrap">
@@ -113,8 +120,14 @@
   </details>
 </section>
 
+<section id="motion">
+  <div class="sechead"><span class="eyebrow">04 · Tactile motion</span><h2>Feel how animals move</h2>
+    <div class="right">Tactile graphics are usually frozen frames —<br>here you can play the motion, or hold a frame and study it</div></div>
+  <div class="grid g3" id="motGrid"></div>
+</section>
+
 <section id="curriculum">
-  <div class="sechead"><span class="eyebrow">04 · Standard program</span><h2>The recovery ladder — 8 sessions, 4 stages</h2>
+  <div class="sechead"><span class="eyebrow">05 · Standard program</span><h2>The recovery ladder — 8 sessions, 4 stages</h2>
     <div class="right">50 min / session · 1–2 sessions per week<br>Facilitator-guided or self-paced at home</div></div>
   <div class="ladder">
     <div class="stage s1"><span class="eyebrow">Stage 1 · Sensation</span><b>Learning to read by touch</b><span>Pin familiarisation, two-handed scanning, texture &amp; line discrimination</span></div>
@@ -126,7 +139,7 @@
 </section>
 
 <section id="device">
-  <div class="sechead"><span class="eyebrow">05 · Send it to the DotPad</span><h2>Live device link</h2>
+  <div class="sechead"><span class="eyebrow">06 · Send it to the DotPad</span><h2>Live device link</h2>
     <div class="right">Web Bluetooth · Chrome / Edge over HTTPS<br>DotPad protocol v3 (row-wise live display)</div></div>
   <div class="devgrid">
     <div class="devdark">
@@ -139,7 +152,7 @@
         <button class="btn btn-ghost" id="btnClear">All pins down</button>
       </div>
       <div class="keymap" style="margin-top:16px; color:rgba(255,255,255,.78)">
-        <b>F1–F4</b> answer options 1–4 &nbsp;·&nbsp; <b>Maze</b> F1 ◀ · F2 ▲ · F3 ▼ · F4 ▶
+        <b>F1–F4</b> answer options 1–4 &nbsp;·&nbsp; <b>Maze</b> F1 ◀ · F2 ▲ · F3 ▼ · F4 ▶ &nbsp;·&nbsp; <b>Motion</b> F1 ⏮ · F2 ▶⏸ · F3 ⏭
       </div>
     </div>
     <div class="card">
@@ -152,6 +165,7 @@ No device nearby? The on-screen simulator runs the full demo.</div>
 
 </main>
 
+
 <script src="t1.js"></script>
 <script src="t2.js"></script>
 <script src="t3.js"></script>
@@ -163,5 +177,6 @@ No device nearby? The on-screen simulator runs the full demo.</div>
 <script src="app-a.js"></script>
 <script src="app-b.js"></script>
 <script src="app-c.js"></script>
+<script src="app-d.js"></script>
 </body>
 </html>
