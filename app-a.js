@@ -71,9 +71,9 @@ const ttsPending=new Map(),ttsCache=new Map(); /* sentence → wav Blob — repe
 const TTS_WORKER_SRC=`
 import {KokoroTTS} from 'https://cdn.jsdelivr.net/npm/kokoro-js@1.2.0/+esm';
 const loading=(async()=>{let tts;
-  try{tts=await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'fp16',device:'webgpu'});}
-  catch(e1){try{tts=await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'fp32',device:'webgpu'});}
-  catch(e2){tts=await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'q8',device:'wasm'});}}
+  /* fp32 first: fp16 WebGPU synthesis produces crackly/garbled audio on some GPUs */
+  try{tts=await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'fp32',device:'webgpu'});}
+  catch(e1){tts=await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'q8',device:'wasm'});}
   postMessage({ready:true});return tts;})();
 loading.catch(e=>postMessage({fatal:''+e}));
 onmessage=async e=>{const {id,text}=e.data;
