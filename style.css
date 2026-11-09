@@ -92,7 +92,7 @@ body::before{content:""; position:fixed; inset:0 0 auto; height:env(safe-area-in
 .tickin b{color:var(--ink); background:var(--soft); border:1px solid var(--line); border-radius:4px; padding:2px 7px; font-weight:500; transition:opacity .3s, transform .3s;}
 .tickin b.tick{opacity:.25; transform:translateY(-3px);}
 /* learner selector & pause */
-#learnerSel{background:var(--soft);border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:8px 14px;font-family:var(--mono);font-size:12px;cursor:pointer;max-width:170px}
+#learnerSel,#langSel{background:var(--soft);border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:8px 14px;font-family:var(--mono);font-size:12px;cursor:pointer;max-width:170px}
 #btnPause.paused{background:var(--lime);color:var(--lime-ink);border-color:var(--lime)}
 /* facilitator tools */
 .facpanel{margin-top:16px;padding:0}
