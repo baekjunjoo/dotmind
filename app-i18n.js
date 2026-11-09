@@ -201,6 +201,10 @@ const I18N={
   noteBtn:'追加',sumBtn:'作成して読み上げ',
   notePh:'例:迷路のあと疲れ気味 · カレンダーは安定',
   langSet:'日本語に切り替えました。',
+  emptyLog:'下の課題をひとつ終えると、スコアが「今日」の★としてこのグラフに表示されます。',
+  chartToday:'今日',chartTitle:'触覚認知 総合スコア(0–100)',
+  band:l=>({Sensation:'感覚',Perception:'知覚',Cognition:'認知',Function:'生活機能'}[l]||l),
+  domBar:n=>({'Orientation':'見当識','Attention':'注意','Tactile-spatial':'触空間','Memory':'記憶','Executive':'実行機能'}[n]||n),
  },
 };
 TXT=function(k,...a){const d=I18N[lang]||I18N.en;const f=(k in d)?d[k]:I18N.en[k];
@@ -216,6 +220,115 @@ async function sayJa(t){lastSaid=t;if(paused)return new Promise(()=>{});
       const v=(speechSynthesis.getVoices()||[]).find(v=>v.lang&&v.lang.toLowerCase().startsWith('ja'));
       if(v)u.voice=v;u.rate=1.0;u.onend=r;u.onerror=r;speechSynthesis.speak(u);});}catch(e){}}
 say=function(t){return lang==='ja'?sayJa(trJa(t)):_sayEn(t);};
+
+/* ---- static page translation: hero, dashboard, curriculum, device sections ----
+   Keys are the exact (whitespace-normalised) English innerHTML of each element.
+   The original English is kept on the element so switching back restores it;
+   elements whose content has changed dynamically are left untouched. */
+const STATJA={
+ /* header */
+ 'No DotPad yet':'DotPad未接続',
+ '⌁ Connect DotPad':'⌁ DotPadを接続',
+ /* hero */
+ 'Tactile cognition, measured by':'触覚認知を、数値で測る',
+ 'Touch is memory.<br>Train <em>both</em>.':'触れることは、記憶。<br><em>両方</em>を鍛える。',
+ 'Dot Mind is a tactile cognitive training program for older adults with acquired vision loss. Every exercise runs on the DotPad, every trial is measured — and recovery becomes a curve you can watch rise.':'Dot Mindは、後天性視覚障害のある高齢者のための触覚認知トレーニングプログラムです。すべての課題はDotPad上で動き、すべての問題が計測されます — 回復が、目に見えて上がっていく一本の曲線になります。',
+ '<span class="ic">⠿</span> Start a training task':'<span class="ic">⠿</span> トレーニングを始める',
+ 'See the 8-session program':'全8回プログラムを見る',
+ '<b>1</b>Choose a task':'<b>1</b>課題を選ぶ',
+ '<b>2</b>Train on the DotPad':'<b>2</b>DotPadで訓練',
+ '<b>3</b>Watch the recovery curve rise':'<b>3</b>回復曲線を見守る',
+ 'Concept demo · Simulated data · Clinical validation required':'コンセプトデモ · 模擬データ · 臨床検証が必要です',
+ /* 01 dashboard */
+ '01 · Recovery dashboard':'01 · 回復ダッシュボード',
+ 'Eight weeks, one rising line':'8週間で、右肩上がりの一本の線',
+ 'Illustrative patient journey<br><span class="simtag">Simulated data for demonstration</span>':'患者の歩みのイメージ<br><span class="simtag">デモ用の模擬データ</span>',
+ '<b>K. Y. · 68</b> — acquired vision loss (nAMD, 2 yrs)<div class="meta">Dot Mind program · 2 sessions / week · weeks 1–8 shown</div>':'<b>K. Y. · 68歳</b> — 後天性視覚障害(nAMD、2年)<div class="meta">Dot Mindプログラム · 週2回 · 第1〜8週を表示</div>',
+ 'Simulated':'模擬データ',
+ 'Accuracy':'正答率','Median response':'反応時間(中央値)','Exploration efficiency':'探索効率',
+ '▲ 42 pts':'▲ 42点','▲ 52% faster':'▲ 52%短縮','▲ 2.4×':'▲ 2.4倍',
+ 'Five cognitive domains':'5つの認知領域',
+ 'Week 1 (faint) vs week 8 (solid) — simulated':'第1週(薄)と第8週(濃) — 模擬データ',
+ 'Live demo results':'ライブデモの結果',
+ 'Complete a task below — your score lands on this chart as ★ Today.':'下の課題をひとつ終えると、スコアが「今日」の★としてこのグラフに表示されます。',
+ /* 02 tasks */
+ '02 · Choose a training task':'02 · 課題を選ぶ',
+ '15 tasks across 5 cognitive domains':'5つの認知領域 × 15の課題',
+ 'All tasks run on the 60 × 40 tactile display<br>with voice guidance &amp; braille labels':'すべての課題は60×40の触覚ディスプレイで動作<br>音声ガイドと点字ラベル付き',
+ /* 03 trainer */
+ '03 · Train on the pad':'03 · パッドで訓練',
+ '<b>Dot Pad</b> · tactile graphic display':'<b>Dot Pad</b> · 触覚グラフィックディスプレイ',
+ '<b class="num">60 × 40</b> · 2,400 dots':'<b class="num">60 × 40</b> · 2,400ドット',
+ /* 04 curriculum */
+ '04 · Standard program':'04 · 標準プログラム',
+ 'The recovery ladder — 8 sessions, 4 stages':'回復のはしご — 全8回・4ステージ',
+ '50 min / session · 1–2 sessions per week<br>Facilitator-guided or self-paced at home':'1回50分 · 週1〜2回<br>進行者の伴走、または自宅で自分のペースで',
+ 'Stage 1 · Sensation':'ステージ1 · 感覚','Learning to read by touch':'触って読むことを学ぶ',
+ 'Pin familiarisation, two-handed scanning, texture &amp; line discrimination':'ピンに慣れる、両手での走査、質感と線の弁別',
+ 'Stage 2 · Perception':'ステージ2 · 知覚','Shapes under the fingertips':'指先の下のかたち',
+ 'Shape matching, odd-one-out, orientation &amp; size comparison':'形合わせ、仲間はずれ、向きと大きさの比較',
+ 'Stage 3 · Cognition':'ステージ3 · 認知','Mental maps &amp; memory':'心的地図と記憶',
+ 'Spatial layouts, tactile working memory, rotation &amp; symmetry':'空間レイアウト、触覚ワーキングメモリ、回転と対称',
+ 'Stage 4 · Function':'ステージ4 · 生活機能','Back to daily life':'日常生活へ戻る',
+ 'Route planning, daily objects, calendars &amp; clocks — independence restored':'経路計画、身近な物、カレンダーと時計 — 自立を取り戻す',
+ /* 05 device */
+ '05 · Send it to the DotPad':'05 · DotPadへ送る',
+ 'Live device link':'ライブ機器連携',
+ 'Web Bluetooth · Chrome / Edge over HTTPS<br>DotPad protocol v3 (row-wise live display)':'Web Bluetooth · Chrome / Edge(HTTPS)<br>DotPadプロトコルv3(行単位ライブ表示)',
+ '⌁ Bluetooth connection':'⌁ Bluetooth接続',
+ 'Every frame you see on the simulator is mirrored to a paired DotPad as row-level live updates — only changed rows are sent. Hardware keys answer for the trainee: function keys pick options, panning keys steer the maze.':'シミュレーターに表示されるすべてのフレームは、ペアリングされたDotPadへ行単位のライブ更新としてミラーリングされます(変更のあった行だけ送信)。本体のキーで受講者が回答できます:ファンクションキーで選択肢、パンキーで迷路の操作。',
+ 'Connect DotPad':'DotPadを接続',
+ 'Send SYNC pattern':'SYNCパターンを送信','Tactile pulse ×5':'触覚パルス ×5','All pins down':'全ピンを下げる',
+ '<b>F1–F4</b> answer options 1–4 &nbsp;·&nbsp; <b>Maze</b> F1 ◀ · F2 ▲ · F3 ▼ · F4 ▶ &nbsp;·&nbsp; <b>Motion</b> F1 ⏮ · F2 ▶⏸ · F3 ⏭':'<b>F1–F4</b> 選択肢1〜4 &nbsp;·&nbsp; <b>迷路</b> F1 ◀ · F2 ▲ · F3 ▼ · F4 ▶ &nbsp;·&nbsp; <b>モーション</b> F1 ⏮ · F2 ▶⏸ · F3 ⏭',
+ 'Device log':'機器ログ',
+};
+/* the device log keeps appending lines, so its intro is swapped by prefix instead */
+const DEVLOG_EN='Ready. Click “Connect DotPad” and pick your device from the Chrome dialog.\nNo device nearby? The on-screen simulator runs the full demo.';
+const DEVLOG_JA='準備完了。「DotPadを接続」を押して、Chromeのダイアログから機器を選んでください。\n近くに機器がなくても、画面上のシミュレーターでデモ全体を試せます。';
+function trDevLog(){const dl=$('devLog');if(!dl)return;
+  if(lang==='ja'&&dl.textContent.startsWith(DEVLOG_EN))dl.textContent=DEVLOG_JA+dl.textContent.slice(DEVLOG_EN.length);
+  else if(lang==='en'&&dl.textContent.startsWith(DEVLOG_JA))dl.textContent=DEVLOG_EN+dl.textContent.slice(DEVLOG_JA.length);}
+function normT(s){return String(s).replace(/\s+/g,' ').trim();}
+function applyStatic(){
+  for(const el of document.body.querySelectorAll('*')){
+    if(el.tagName==='SCRIPT'||el.tagName==='STYLE'||el instanceof SVGElement||el.tagName==='CANVAS')continue;
+    const curN=normT(el.innerHTML);
+    let en=el._i18nEn!=null?normT(el._i18nEn):null,ja=null;
+    if(en!=null)ja=STATJA[en];
+    else if(STATJA[curN]!=null){en=curN;ja=STATJA[curN];el._i18nEn=el.innerHTML;}
+    if(ja==null)continue;
+    if(curN!==en&&curN!==normT(ja))continue; /* dynamic content has replaced it — leave as is */
+    el.innerHTML=lang==='ja'?ja:el._i18nEn;}}
+
+/* ---- curriculum session cards (rendered by app-b) ---- */
+const STAGEJA=['感覚','知覚','認知','生活機能'];
+const SESSJA=[
+ {t:'触れて世界をひらく',d:'機器に慣れる:グラフィック領域と点字行、両手での走査。触る時計と今日の天気アイコンを読みます。',g:['見当識','触覚の基礎']},
+ {t:'隠れた形を探す',d:'選択的注意:線の質感を比べ、絡んだ線を端から端までたどり、同じ形の中に潜むひとつを見つけます。',g:['注意']},
+ {t:'心の地図を描く',d:'空間表象:角から角への指さしゲーム、3×3のマス目の位置、自分の部屋の簡単な間取り図。',g:['触空間']},
+ {t:'指先の記憶',d:'触覚ワーキングメモリ:配置を10秒間触って覚え、何が動いたかを思い出します — 触るキムズゲームと神経衰弱。',g:['記憶','注意']},
+ {t:'ピースと回転',d:'構成能力:触るタングラム、触った形の心的回転、対称図形の完成。',g:['触空間','実行機能']},
+ {t:'ルールとコード',d:'論理的推論:形の系列、4×4の触るナンプレ、点字と触図の単語–絵合わせ。',g:['実行機能','記憶']},
+ {t:'ルートを計画する',d:'複合的問題解決:段階的な迷路脱出、つづいて触地図で家→薬局→公園の最短ルートを計画します。',g:['実行機能','触空間']},
+ {t:'わたしの触るキャンバス',d:'統合と回想:コンパニオンアプリで思い出の物や顔を描き、DotPadで一緒に探索します。',g:['統合','回想']},
+];
+function renderSess(){const ja=lang==='ja';
+  document.getElementById('sessGrid').innerHTML=SESS.map((s,i)=>{
+    const tr=ja?SESSJA[i]:null;
+    const head=ja?`セッション${s.n} · ステージ${s.st} ${STAGEJA[s.st-1]}`:`Session ${s.n} · Stage ${s.st} ${STAGENAME[s.st-1]}`;
+    const tags=(tr?tr.g:s.tags).map(x=>`<i>${x}</i>`).join('');
+    return `<div class="sess"><div class="shead"><span class="snum">${head}</span></div><b>${tr?tr.t:s.t}</b><p>${tr?tr.d:s.d}</p><div class="tags">${tags}</div></div>`;}).join('');}
+
+/* ---- live log & status pill stay translated as they update ---- */
+function trLiveLog(){const log=$('liveLog');if(!log)return;
+  if(lang!=='ja')return;
+  const e=log.querySelector('.empty');if(e)e.textContent=TXT('emptyLog');
+  log.querySelectorAll('li:not(.empty) span:nth-child(2)').forEach(sp=>{
+    const t=TASKS.find(x=>x.name===sp.textContent);if(t)sp.textContent=NAMEJA[t.id]||t.name;});}
+try{new MutationObserver(()=>trLiveLog()).observe($('liveLog'),{childList:true});}catch(e){}
+const _setStatus=setStatus;
+setStatus=function(on,name){_setStatus(on,name);
+  if(lang==='ja')$('statusTxt').textContent=on?('接続済み · '+(name||'DotPad')):'DotPad未接続';};
 
 /* ---- apply the language to everything already on screen ---- */
 function applyLang(){
@@ -246,7 +359,9 @@ function applyLang(){
       if(st)st.textContent=lang==='ja'?(DOMNOTEJA[k]||''):(DOMS[k].note+' · '+DOMS[k].stage);}});
   document.querySelectorAll('.taskcard .done').forEach(d=>d.textContent=TXT('doneChip'));
   if(!cur&&!mot){$('trainerTitle').textContent=TXT('pickTitle');$('qText').textContent=TXT('pickDesc');
-    $('trialLab').textContent=TXT('trialDefault');}}
+    $('trialLab').textContent=TXT('trialDefault');}
+  applyStatic();renderSess();trLiveLog();trDevLog();drawChart();drawDomBars();
+  document.documentElement.lang=(lang==='ja'?'ja':'en');}
 const _lsel=$('langSel');
 if(_lsel)_lsel.addEventListener('change',()=>{lang=_lsel.value==='ja'?'ja':'en';
   applyLang();DP.log('Language: '+(lang==='ja'?'日本語':'English'));sayCue(TXT('langSet'));});
