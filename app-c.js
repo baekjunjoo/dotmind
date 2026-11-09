@@ -38,23 +38,23 @@ const escH=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,
 function refreshLearnerSel(){const sel=$('learnerSel');if(!sel)return;
   const names=Object.keys(lsLoad());if(!names.includes(learner))names.push(learner);
   sel.innerHTML=names.sort().map(n=>`<option value="${escH(n)}"${n===learner?' selected':''}>${escH(n)}</option>`).join('')
-    +'<option value="__add__">＋ Add learner…</option>';}
+    +`<option value="__add__">${TXT('addLearner')}</option>`;}
 function initLearners(){
   let n='Guest';try{n=localStorage.getItem(LS_CUR)||'Guest';}catch(e){}
   loadLearner(n);saveLearner();refreshLearnerSel();
   $('learnerSel').addEventListener('change',()=>{const v=$('learnerSel').value;
-    if(cur&&!confirm('Switch learner? The current task will stop.')){refreshLearnerSel();return;}
+    if(cur&&!confirm(TXT('confirmSwitch'))){refreshLearnerSel();return;}
     setPaused(false);
     if(cur){cleanup();cur=null;idleStart();$('btnQuit').hidden=true;
-      $('trainerTitle').textContent='Pick a task to begin';$('trainerDom').innerHTML='';}
-    if(v==='__add__'){const nm=(prompt('New learner name:')||'').trim();
+      $('trainerTitle').textContent=TXT('pickTitle');$('trainerDom').innerHTML='';}
+    if(v==='__add__'){const nm=(prompt(TXT('promptLearner'))||'').trim();
       if(nm){saveLearner();loadLearner(nm);saveLearner();}}
     else{saveLearner();loadLearner(v);}
     refreshLearnerSel();DP.log('Learner: '+learner+' — levels and history loaded.');});}
 
 /* ---- pause / resume: stops narration, response timer, exposure countdown, auto-advance ---- */
 function setPaused(p){if(p===paused)return;paused=p;
-  const b=$('btnPause');if(b){b.textContent=p?'▶ Resume':'⏸ Pause';b.classList.toggle('paused',p);}
+  const b=$('btnPause');if(b){b.textContent=p?TXT('resumeBtn'):TXT('pauseBtn');b.classList.toggle('paused',p);}
   if(p){cancelSpeech();
     if(cur){
       if(cur.tick){clearInterval(cur.tick);cur.tick=null;}
@@ -62,7 +62,7 @@ function setPaused(p){if(p===paused)return;paused=p;
       if(cur.ph){clearTimeout(cur.ph.tmo);if(cur.cd){clearInterval(cur.cd);cur.cd=null;}
         cur.ph.remainMs=Math.max(0,cur.ph.remainMs-(performance.now()-cur.ph.started));}}
     if(autoNextT){clearTimeout(autoNextT);autoNextT=null;}
-    $('voiceStatus').textContent='Paused — narration and timers are stopped.';
+    $('voiceStatus').textContent=TXT('pausedStatus');
   }else{$('voiceStatus').textContent='';resumeFlow();}}
 function resumeFlow(){
   if(cur&&cur.ph){phaseRun();return;}
@@ -78,8 +78,8 @@ function cleanup(){if(autoNextT){clearTimeout(autoNextT);autoNextT=null;}pending
   $('dpad').style.display='none';$('optRow').innerHTML='';$('feed').textContent='';$('feed').className='feed';$('timer').textContent='';$('resultBox').hidden=true;}
 function startTask(t){if(paused)setPaused(false);cleanup();idleStop();
   cur={task:t,trial:0,n:t.maze?2:6,res:[],timers:[]};
-  $('trainerTitle').textContent=t.name;
-  $('trainerDom').innerHTML=`${DOMS[t.dom].label} · ${t.maze?'2 runs':'6 trials'}<br><span class="simtag">live measurement</span>`;
+  $('trainerTitle').textContent=TNAME(t);
+  $('trainerDom').innerHTML=`${TDOM(t.dom)} · ${t.maze?TXT('runs2'):TXT('trials6')}<br><span class="simtag">${TXT('liveMeas')}</span>`;
   $('btnQuit').hidden=false;
   document.getElementById('trainer').scrollIntoView({behavior:'smooth',block:'start'});
   nextTrial();}
@@ -94,13 +94,13 @@ function nextTrial(){
   cur.trial++;cur.timerOn=false;cur.pausedEl=null;cur.hintUsed=false;
   const adaptive=ADAPT.has(cur.task.id);
   cur.lvl=adaptive?(LVL[cur.task.id]??1):null;
-  $('trialLab').textContent=(cur.task.maze?'Run':'Trial')+` ${cur.trial} of ${cur.n}`+(adaptive?` · Lv ${cur.lvl+1}`:'');
+  $('trialLab').textContent=TXT('trial',!!cur.task.maze,cur.trial,cur.n)+(adaptive?` · Lv ${cur.lvl+1}`:'');
   tdotsRender();
   $('feed').textContent='';$('feed').className='feed';
   const spec=adaptive?cur.task.gen(cur.lvl):cur.task.gen();cur.spec=spec;
   setBraille(spec.brl||'');
   if(spec.maze){cur.t0=performance.now();drawMaze(spec);
-    $('qText').textContent=spec.q;$('timer').textContent='';
+    $('qText').textContent=T(spec.q);$('timer').textContent='';
     $('optRow').innerHTML='';$('dpad').style.display='grid';
     const curAt=cur; /* response timer starts once the instructions have been read aloud */
     say(spec.say||spec.q).then(()=>{if(cur===curAt&&cur.spec===spec)startTimer();});
@@ -115,21 +115,21 @@ function runPhases(spec,k){
   if(ph.say)say(ph.say);
   if(!paused)phaseRun();}
 function phaseRun(){const P=cur.ph;let remain=Math.ceil(P.remainMs/1000);
-  $('qText').textContent=P.label+` (${remain}s)`;
+  $('qText').textContent=T(P.label)+` (${remain}s)`;
   P.started=performance.now();
-  cur.cd=setInterval(()=>{remain--;if(remain>=0)$('qText').textContent=P.label+` (${remain}s)`;},1000);
+  cur.cd=setInterval(()=>{remain--;if(remain>=0)$('qText').textContent=T(P.label)+` (${remain}s)`;},1000);
   P.tmo=setTimeout(()=>{clearInterval(cur.cd);cur.cd=null;const sp=P.spec,kk=P.k;cur.ph=null;runPhases(sp,kk+1);},P.remainMs);}
 function startTimer(){cur.timerOn=true;cur.t0=performance.now();
   cur.tick=setInterval(()=>{$('timer').textContent=((performance.now()-cur.t0)/1000).toFixed(1)+'s';},100);}
 function ask(spec){
-  $('qText').textContent=spec.q;
+  $('qText').textContent=T(spec.q);
   let sp=spec.say||spec.q;
   const plain=spec.opts.every((o,i)=>o===String(i+1));
   if(plain)sp+=' Choose a position from one to four.';
   else sp+=' '+spec.opts.map((o,i)=>'Option '+(i+1)+': '+String(o).replace(/→/g,', then ').replace(/\s*·\s*/g,', ')+'.').join(' ');
   const row=$('optRow');row.innerHTML='';
   spec.opts.forEach((o,i)=>{const b=document.createElement('button');b.className='opt';
-    b.innerHTML=`<b>${i+1}</b><span>${o}</span>`;b.addEventListener('click',()=>answer(i));row.appendChild(b);});
+    b.innerHTML=`<b>${i+1}</b><span>${Topt(o)}</span>`;b.addEventListener('click',()=>answer(i));row.appendChild(b);});
   cur.awaiting=true;
   /* response timer starts only after the question and options have been read aloud */
   cur.t0=performance.now();$('timer').textContent='';
@@ -142,7 +142,7 @@ function answer(i){
   cur.res.push({ok,rt,lvl:cur.lvl});tdotsRender();
   sessionLog.push({task:cur.task.id,trial:cur.trial,lvl:cur.lvl,ok,rt:+rt.toFixed(2),hint:cur.hintUsed?1:0,ts:Date.now()});
   adjustLvl(cur.task.id,ok,cur.hintUsed);saveLearner();
-  const f=$('feed');f.textContent=ok?`Correct · ${rt.toFixed(1)}s`:`Not quite — it was “${spec.opts[spec.correct]}” · ${rt.toFixed(1)}s`;
+  const f=$('feed');f.textContent=ok?TXT('feedOk',rt.toFixed(1)):TXT('feedNo',Topt(spec.opts[spec.correct]),rt.toFixed(1));
   f.className='feed '+(ok?'ok':'no');sayCue(ok?'Correct!':'Not quite.');
   cur.timers.push(setTimeout(nextTrial,1600));}
 function mazeDone(s){cur.timerOn=false;clearInterval(cur.tick);
@@ -152,7 +152,7 @@ function mazeDone(s){cur.timerOn=false;clearInterval(cur.tick);
   sessionLog.push({task:'maze',trial:cur.trial,lvl:cur.lvl,ok:true,rt:+rt.toFixed(2),moves:s.moves,optimal:s.optimal,bumps:s.bumps||0,hints:s.hints||0,ts:Date.now()});
   adjustLvl('maze',eff>=0.7,(s.hints||0)>0);saveLearner();
   $('dpad').style.display='none';tdotsRender();
-  const f=$('feed');f.textContent=`Escaped! ${s.moves} moves (optimal ${s.optimal}) · ${rt.toFixed(1)}s`;f.className='feed ok';
+  const f=$('feed');f.textContent=TXT('escaped',s.moves,s.optimal,rt.toFixed(1));f.className='feed ok';
   sayCue('You escaped the maze. Well done.');
   cur.timers.push(setTimeout(nextTrial,1200));}
 function finishTask(){
@@ -160,12 +160,12 @@ function finishTask(){
   let score,detail;
   const med=a=>{const s=a.slice().sort((x,y)=>x-y);return s[Math.floor(s.length/2)];};
   if(t.maze&&res.length){const eff=res.reduce((a,r)=>a+r.eff,0)/res.length;score=Math.round(eff*100);
-    detail=res.map(r=>`${r.moves} moves (opt ${r.optimal})`).join(' · ')+` · ${res.reduce((a,r)=>a+r.rt,0).toFixed(1)}s total`;}
+    detail=res.map(r=>TXT('mazeDet',r.moves,r.optimal)).join(' · ')+' · '+TXT('totalSec',res.reduce((a,r)=>a+r.rt,0).toFixed(1));}
   else{const hits=res.filter(r=>r.ok).length;score=Math.round(hits/res.length*100);
-    detail=`${hits}/${res.length} correct · median ${med(res.map(r=>r.rt)).toFixed(1)}s`;}
+    detail=TXT('accDet',hits,res.length,med(res.map(r=>r.rt)).toFixed(1));}
   $('resultBox').hidden=false;
-  $('resultBox').innerHTML=`<div class="resultcard"><b class="big">★ ${score}</b> &nbsp;${t.name} — ${detail}<br>
-   <span style="color:var(--mut);font-size:12.5px">Plotted on the recovery dashboard as “Today”. On the full program this feeds the weekly curve.</span></div>`;
+  $('resultBox').innerHTML=`<div class="resultcard"><b class="big">★ ${score}</b> &nbsp;${TNAME(t)} — ${detail}<br>
+   <span style="color:var(--mut);font-size:12.5px">${TXT('plotted')}</span></div>`;
   liveStars.push({score,k:liveStars.length,name:t.name,detail,ts:Date.now()});drawChart();saveLearner();
   const log=$('liveLog');if(log.querySelector('.empty'))log.innerHTML='';
   const li=document.createElement('li');
@@ -173,21 +173,21 @@ function finishTask(){
   log.prepend(li);
   const card=$('tc-'+t.id);if(card)card.querySelector('.done').hidden=false;
   const idx=TASKS.indexOf(t),nxt=TASKS[(idx+1)%TASKS.length];
-  $('qText').textContent=`Task complete — ★ ${score}. Next up: ${nxt.name} (starts automatically; “End task” stops the session).`;
+  $('qText').textContent=TXT('taskDoneTxt',score,TNAME(nxt));
   say(`Task complete. Your score: ${score}. Next task: ${nxt.name}.`);
   cur=null;
   pendingNext=nxt;autoNextT=setTimeout(()=>{autoNextT=null;pendingNext=null;startTask(nxt);},6000);}
 $('btnQuit').addEventListener('click',()=>{setPaused(false);cleanup();cur=null;
-  $('trainerTitle').textContent='Pick a task to begin';$('trainerDom').innerHTML='';
+  $('trainerTitle').textContent=TXT('pickTitle');$('trainerDom').innerHTML='';
   const sLog=sessionLog.slice(sessStartLog);
   if(sLog.length){ /* spoken end-of-session summary — this session only */
     const n=sLog.length,hits=sLog.filter(r=>r.ok).length,tasksDone=liveStars.length-sessStartStars;
-    const sum=`Session finished. Today you completed ${tasksDone} task${tasksDone===1?'':'s'} and ${n} trial${n===1?'':'s'} — ${hits} correct. Well done.`;
-    $('qText').textContent=sum+' You can export this session’s data from the dashboard above.';
+    const sum=TXT('sessSum',tasksDone,n,hits);
+    $('qText').textContent=sum+' '+TXT('exportNote');
     say(sum);
     sessStartLog=sessionLog.length;sessStartStars=liveStars.length;
   }else{
-    $('qText').textContent='Select any task card above. Each task runs six short trials; accuracy and response time are recorded and plotted on the recovery dashboard.';
+    $('qText').textContent=TXT('pickDesc');
   }
   $('btnQuit').hidden=true;idleStart();});
 document.getElementById('btnExport').addEventListener('click',()=>{
@@ -202,9 +202,9 @@ const FAC_TASKS={cal:'Tactile calendar',trace:'Line tracing',pairs:'Position mem
 function refreshFac(){const host=$('facLvls');if(!host)return;host.innerHTML='';
   for(const id of Object.keys(FAC_TASKS)){
     const row=document.createElement('div');row.className='lvlrow';
-    const lab=document.createElement('span');lab.textContent=FAC_TASKS[id];row.appendChild(lab);
+    const lab=document.createElement('span');lab.textContent=TNAME({id,name:FAC_TASKS[id]});row.appendChild(lab);
     const sel=document.createElement('select');sel.setAttribute('aria-label','Level for '+FAC_TASKS[id]);
-    [0,1,2].forEach(l=>{const o=document.createElement('option');o.value=l;o.textContent='Level '+(l+1);if((LVL[id]??1)===l)o.selected=true;sel.appendChild(o);});
+    [0,1,2].forEach(l=>{const o=document.createElement('option');o.value=l;o.textContent=TXT('level',l+1);if((LVL[id]??1)===l)o.selected=true;sel.appendChild(o);});
     sel.addEventListener('change',()=>{LVL[id]=+sel.value;STREAK[id]=0;saveLearner();
       DP.log('Facilitator set '+FAC_TASKS[id]+' to Level '+(+sel.value+1)+' for '+learner+' (applies from the next trial).');});
     row.appendChild(sel);host.appendChild(row);}}
