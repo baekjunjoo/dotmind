@@ -212,13 +212,27 @@ TXT=function(k,...a){const d=I18N[lang]||I18N.en;const f=(k in d)?d[k]:I18N.en[k
 
 /* ---- Japanese speech: browser ja-JP voice with the same pause/interrupt semantics ---- */
 const _sayEn=say;
+/* pick the best installed Japanese voice once — getVoices() is often empty on the first call,
+   and without an explicit ja voice some browsers read Japanese with the default (English)
+   voice, which sounds broken */
+let jaVoice=null,jaVoiceWarned=false;
+function pickJaVoice(){try{
+  const vs=(speechSynthesis.getVoices()||[]).filter(v=>v.lang&&v.lang.toLowerCase().replace('_','-').startsWith('ja'));
+  if(!vs.length){jaVoice=null;return;}
+  const pref=['Google 日本語','Kyoko','O-Ren','Nanami','Ayumi','Haruka','Sayaka','Ichiro','Keita'];
+  jaVoice=vs.find(v=>pref.some(p=>v.name.includes(p)))||vs.find(v=>!v.localService)||vs[0];
+}catch(e){}}
+try{pickJaVoice();speechSynthesis.addEventListener('voiceschanged',pickJaVoice);}catch(e){}
 async function sayJa(t){lastSaid=t;if(paused)return new Promise(()=>{});
   const tok=++sayTok;stopAudio();
   try{if(!('speechSynthesis' in window))return;speechSynthesis.cancel();
     await new Promise(r=>setTimeout(r,80));if(tok!==sayTok)return;
+    if(!jaVoice)pickJaVoice();
+    if(!jaVoice&&!jaVoiceWarned&&(speechSynthesis.getVoices()||[]).length){jaVoiceWarned=true;
+      const st=$('voiceStatus');if(st)st.textContent='⚠ 日本語の音声がこの端末に見つかりません — OSの音声設定で日本語ボイスを追加してください。';
+      DP.log('No Japanese voice installed — Japanese narration may sound wrong. Add a Japanese voice in the OS speech settings.');}
     await new Promise(r=>{const u=new SpeechSynthesisUtterance(t);u.lang='ja-JP';
-      const v=(speechSynthesis.getVoices()||[]).find(v=>v.lang&&v.lang.toLowerCase().startsWith('ja'));
-      if(v)u.voice=v;u.rate=1.0;u.onend=r;u.onerror=r;speechSynthesis.speak(u);});}catch(e){}}
+      if(jaVoice)u.voice=jaVoice;u.rate=1.0;u.onend=r;u.onerror=r;speechSynthesis.speak(u);});}catch(e){}}
 say=function(t){return lang==='ja'?sayJa(trJa(t)):_sayEn(t);};
 
 /* ---- static page translation: hero, dashboard, curriculum, device sections ----
