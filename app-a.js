@@ -65,6 +65,8 @@ function requestPaint(){if(!rafQ){rafQ=true;requestAnimationFrame(paint);}
 /* ================= speech — Kokoro-82M neural TTS in a Web Worker (keeps the UI responsive) ================= */
 let lastSaid='',kokoroReady=false,kokoroAudio=null,sayTok=0,ttsWorker=null,ttsSeq=0;
 let paused=false,pendingNext=null; /* session pause state & queued next task */
+let T=t=>t,Topt=o=>String(o),TNAME=x=>x.name,TDOM=k=>DOMS[k].label,
+    TXT=(k,a)=>k==='level'?'Level '+a:k==='addLearner'?'＋ Add learner…':''; /* overridden by app-i18n */
 const ttsPending=new Map(),ttsCache=new Map(); /* sentence → wav Blob — repeated prompts replay instantly */
 const TTS_WORKER_SRC=`
 import {KokoroTTS} from 'https://cdn.jsdelivr.net/npm/kokoro-js@1.2.0/+esm';
@@ -240,7 +242,7 @@ function drawChart(){
   let s='';
   for(const [a,bb,lab,col] of bands)
     s+=`<rect x="${xi(a)}" y="${t}" width="${xi(bb)-xi(a)}" height="${Hc-t-b}" fill="${col}" opacity="0.07"/>`+
-       `<text x="${xi(a)+5}" y="${t+12}">${lab}</text>`;
+       `<text x="${xi(a)+5}" y="${t+12}">${TXT('band',lab)||lab}</text>`;
   for(const g of [0,25,50,75,100])
     s+=`<line x1="${l}" x2="${Wc-r+40}" y1="${yv(g)}" y2="${yv(g)}" stroke="var(--line)" stroke-width="1"/>`+
        `<text x="${l-8}" y="${yv(g)+3}" text-anchor="end">${g}</text>`;
@@ -250,16 +252,17 @@ function drawChart(){
   WEEKS.forEach((v,i)=>{s+=`<circle cx="${xi(i)}" cy="${yv(v)}" r="${i===7?6:3.5}" fill="${i===7?'var(--blue)':'var(--panel)'}" stroke="var(--blue)" stroke-width="2"/>`;
     s+=`<text x="${xi(i)}" y="${Hc-12}" text-anchor="middle">W${i+1}</text>`;});
   s+=`<text x="${xi(7)+14}" y="${yv(78)+4}" font-weight="600" fill="var(--blue)">78</text>`;
-  s+=`<text x="${xi(8)}" y="${Hc-12}" text-anchor="middle" font-weight="600">Today</text>`;
+  s+=`<text x="${xi(8)}" y="${Hc-12}" text-anchor="middle" font-weight="600">${TXT('chartToday')||'Today'}</text>`;
   s+=`<line x1="${xi(7.55)}" x2="${xi(7.55)}" y1="${t}" y2="${Hc-b}" stroke="var(--line)" stroke-dasharray="3 4"/>`;
   for(const st of liveStars.slice(-8)){
     const x=xi(8)+(st.k%2?7:-7)*(st.k>1?1:0), y=yv(st.score);
     s+=`<text x="${x}" y="${y+5}" text-anchor="middle" font-size="17" fill="var(--lime)" stroke="var(--ink)" stroke-width="0.8">★</text>`;
     s+=`<text x="${x}" y="${y+18}" text-anchor="middle">${st.score}</text>`;}
-  s+=`<text x="${l}" y="14" font-weight="600" fill="var(--ink)">Composite tactile-cognition score (0–100)</text>`;
+  s+=`<text x="${l}" y="14" font-weight="600" fill="var(--ink)">${TXT('chartTitle')||'Composite tactile-cognition score (0–100)'}</text>`;
   svg.innerHTML=s;
 }
 function drawDomBars(){
   document.getElementById('domBars').innerHTML=DOMDATA.map(([nm,a,b])=>
-   `<div class="domrow"><span class="nm">${nm}</span><span class="bar"><i style="width:${b}%"></i><i class="base" style="width:${a}%"></i></span><span class="pct num">${a} → ${b}</span></div>`).join('');
+   `<div class="domrow"><span class="nm">${TXT('domBar',nm)||nm}</span><span class="bar"><i style="width:${b}%"></i><i class="base" style="width:${a}%"></i></span><span class="pct num">${a} → ${b}</span></div>`).join('');
 }
+
